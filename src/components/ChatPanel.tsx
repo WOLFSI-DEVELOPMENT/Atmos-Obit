@@ -30,8 +30,12 @@ import { Project, Message, GEMINI_MODELS } from '../types';
 interface ChatPanelProps {
   project: Project;
   onMessagesChange: (messages: Message[]) => void;
+  onFilesUpdate?: (files: { path: string; type: string; content: string }[]) => void;
   selectedModel: string;
   setSelectedModel: (model: string) => void;
+  artifactsEnabled?: boolean;
+  isArtifactsPanelOpen?: boolean;
+  setIsArtifactsPanelOpen?: (open: boolean) => void;
 }
 
 // Preset Roblox Luau Quick Prompt Chips
@@ -108,8 +112,12 @@ function CodeBlock({ children, className }: { children: any; className?: string 
 export default function ChatPanel({ 
   project, 
   onMessagesChange,
+  onFilesUpdate,
   selectedModel,
-  setSelectedModel
+  setSelectedModel,
+  artifactsEnabled,
+  isArtifactsPanelOpen,
+  setIsArtifactsPanelOpen
 }: ChatPanelProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -127,6 +135,34 @@ export default function ChatPanel({
   const [sendBtnColor, setSendBtnColor] = useState('#b0b0b0');
   const [sendBtn3D, setSendBtn3D] = useState(false);
   const [aiFont, setAiFont] = useState('default');
+  const [runningDuration, setRunningDuration] = useState<number>(0);
+  const runningIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (isLoading) {
+      setRunningDuration(0);
+      runningIntervalRef.current = setInterval(() => {
+        setRunningDuration(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (runningIntervalRef.current) {
+        clearInterval(runningIntervalRef.current);
+      }
+    }
+    return () => {
+      if (runningIntervalRef.current) clearInterval(runningIntervalRef.current);
+    };
+  }, [isLoading]);
+  const [suggestedPrompts, setSuggestedPrompts] = useState<{label: string, prompt: string}[] | null>(null);
+
+  useEffect(() => {
+    setSuggestedPrompts(null);
+    const timer = setTimeout(() => {
+      setSuggestedPrompts(QUICK_PROMPT_PRESETS);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [project.id]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -241,6 +277,9 @@ export default function ChatPanel({
     const updatedWithUser = [...project.messages, userMessage];
     onMessagesChange(updatedWithUser);
 
+    abortControllerRef.current = new AbortController();
+    const startTime = Date.now();
+
     try {
       // const globalApiKey = localStorage.getItem('vibecoder_api_key') || '';
       const savedLevels = JSON.parse(localStorage.getItem('vibecoder_thinking_levels') || '{}');
@@ -297,7 +336,8 @@ export default function ChatPanel({
           responseTone,
           guiStyle,
           orchestratorEnabled
-        })
+        }),
+        signal: abortControllerRef.current?.signal
       });
 
       if (!res.ok) {
@@ -308,30 +348,41 @@ export default function ChatPanel({
       const aiMessage: Message = {
         role: 'model',
         content: data.reply || 'No response returned from assistant.',
-        diffs: data.diffs
+        diffs: data.diffs,
+        model: selectedModel,
+        duration: (Date.now() - startTime) / 1000
       };
 
       onMessagesChange([...updatedWithUser, aiMessage]);
+      if (data.files && onFilesUpdate) {
+        onFilesUpdate(data.files);
+      }
     } catch (e: any) {
       console.error(e);
-      const errorMessage: Message = {
-        role: 'model',
-        content: `⚠️ **Connection Error**: Failed to communicate with VibeCoder AI. Please check your network or verify server status.`
-      };
-      onMessagesChange([...updatedWithUser, errorMessage]);
+      if (e.name === 'AbortError') {
+        const aiMessage: Message = {
+           role: 'model',
+           content: `⚠️ **Request Cancelled by User**`,
+           model: selectedModel,
+           duration: (Date.now() - startTime) / 1000
+        };
+        onMessagesChange([...updatedWithUser, aiMessage]);
+      } else {
+        const errorMessage: Message = {
+          role: 'model',
+          content: `⚠️ **Connection Error**: Failed to communicate with VibeCoder AI. Please check your network or verify server status.`
+        };
+        onMessagesChange([...updatedWithUser, errorMessage]);
+      }
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
   };
 
-  const handleClearChat = () => {
-    if (confirm('Clear conversation history for this project?')) {
-      onMessagesChange([
-        {
-          role: 'model',
-          content: `Conversation restarted for **${project.name}**. Ready for new Roblox Luau requests!`
-        }
-      ]);
+  const handleStopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
   };
 
@@ -390,24 +441,45 @@ end
 
       {/* Top Workspace Header */}
       <div className="absolute top-0 left-0 right-0 py-2.5 pr-4 pl-8 flex items-center justify-between z-20 pointer-events-none">
-        <div className="flex items-center gap-2 pointer-events-auto">
+        <div className="flex items-center gap-2 pointer-events-auto relative" ref={pinDropdownRef}>
           <h2 className="text-[17px] font-medium tracking-wide text-white">{project.name}</h2>
-          <button className="p-1 text-neutral-500 hover:text-white transition-colors rounded-full hover:bg-white/5">
+          <button 
+            onClick={() => setIsPinDropdownOpen(!isPinDropdownOpen)}
+            className={`p-1 transition-colors rounded-full ${
+              isPinDropdownOpen 
+                ? 'bg-white text-black' 
+                : 'text-neutral-500 hover:text-white hover:bg-white/5'
+            }`}
+          >
             <ChevronDown size={16} strokeWidth={2.5} />
           </button>
+
+          {isPinDropdownOpen && (
+            <div className="absolute top-full left-0 mt-2 w-64 bg-[#2a2a2a]/90 backdrop-blur-xl rounded-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150 shadow-2xl border border-white/5">
+              <div className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold mb-2">
+                Roblox PIN
+              </div>
+              <div className="flex items-center justify-between bg-[#1a1a1a] p-2.5 rounded-xl">
+                <span className="font-mono font-bold text-base tracking-[0.1em] text-white select-all pl-1">
+                  {project.pin}
+                </span>
+                <button
+                  onClick={copyPinToClipboard}
+                  className="p-1.5 text-neutral-400 hover:text-white hover:bg-[#2a2a2a] rounded-lg transition-colors"
+                  title="Copy PIN"
+                >
+                  {isPinCopied ? <Check size={14} className="text-white" /> : <Copy size={14} />}
+                </button>
+              </div>
+              <p className="text-[10px] text-neutral-500 mt-2.5 leading-normal">
+                Enter this PIN in the VibeCoder Roblox Studio plugin to sync.
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* Top Header Controls: Clear Chat, Sync Badge, Pin */}
+        {/* Top Header Controls: Sync Badge, Artifacts Toggle */}
         <div className="flex items-center gap-2 relative pointer-events-auto">
-
-          {/* Clear Chat Button */}
-          <button
-            onClick={handleClearChat}
-            className="p-1.5 text-neutral-500 hover:text-neutral-300 hover:bg-neutral-900 rounded-lg transition-colors"
-            title="Clear conversation history"
-          >
-            <Trash2 size={15} />
-          </button>
 
           {/* Sync Status Badge */}
           {project.status === 'connected' ? (
@@ -420,49 +492,19 @@ end
             </span>
           )}
 
-          {/* Pin Dropdown */}
-          <div className="relative" ref={pinDropdownRef}>
-            <button
-              onClick={() => setIsPinDropdownOpen(!isPinDropdownOpen)}
-              className={`p-2 rounded-full transition-colors flex items-center justify-center ${
-                isPinDropdownOpen 
-                  ? 'bg-white text-black' 
-                  : 'text-neutral-400 hover:text-white hover:bg-white/5'
-              }`}
-              title="Show connection PIN"
+          {/* Artifacts Toggle Button */}
+          {artifactsEnabled && (
+            <button 
+              onClick={() => setIsArtifactsPanelOpen && setIsArtifactsPanelOpen(!isArtifactsPanelOpen)}
+              className="text-neutral-500 hover:text-white transition-colors p-1.5 rounded-lg flex items-center justify-center"
+              title="Toggle Artifacts Code View"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="36" height="15" viewBox="0 0 52 22" fill="none" className="text-current">
-                <rect x="1.5" y="1.5" width="49" height="19" rx="4" stroke="currentColor" strokeWidth="2.5" />
-                <path d="M12 7v8M8 11h8M9 8l6 6M9 14l6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                <path d="M22 7v8M18 11h8M19 8l6 6M19 14l6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                <path d="M32 7v8M28 11h8M29 8l6 6M29 14l6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                <path d="M42 7v8M38 11h8M39 8l6 6M39 14l6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="5"></rect>
+                <line x1="16" y1="7" x2="16" y2="17" className="transition-all duration-300 ease-in-out"></line>
               </svg>
             </button>
-
-            {isPinDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-[#2a2a2a]/50 backdrop-blur-xl rounded-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                <div className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold mb-2">
-                  Roblox PIN
-                </div>
-                <div className="flex items-center justify-between bg-[#1a1a1a] p-2.5 rounded-xl">
-                  <span className="font-mono font-bold text-base tracking-[0.1em] text-white select-all pl-1">
-                    {project.pin}
-                  </span>
-                  <button
-                    onClick={copyPinToClipboard}
-                    className="p-1.5 text-neutral-400 hover:text-white hover:bg-[#2a2a2a] rounded-lg transition-colors"
-                    title="Copy PIN"
-                  >
-                    {isPinCopied ? <Check size={14} className="text-white" /> : <Copy size={14} />}
-                  </button>
-                </div>
-                <p className="text-[10px] text-neutral-500 mt-2.5 leading-normal">
-                  Enter this PIN in the VibeCoder Roblox Studio plugin to sync.
-                </p>
-              </div>
-            )}
-          </div>
+          )}
 
         </div>
       </div>
@@ -484,7 +526,7 @@ end
                       className="max-h-48 rounded-lg object-cover" 
                     />
                   )}
-                  <div className="p-3.5 rounded-2xl rounded-tr-sm bg-[#2a2a2a] text-sm text-neutral-100 leading-relaxed">
+                  <div className="p-3.5 rounded-2xl rounded-tr-sm bg-[#2a2a2a] text-sm text-neutral-100 leading-relaxed" style={{ border: 'none', outline: 'none' }}>
                     {msg.content}
                   </div>
                 </div>
@@ -492,7 +534,15 @@ end
                 /* AI Response Block */
                 <div className="w-full flex max-w-3xl">
                   <div className="flex-1 space-y-1 overflow-x-auto">
-                    <div className="text-[10px] uppercase font-bold text-neutral-500 tracking-wider">VibeCoder AI</div>
+                    <div className="text-[11px] font-medium text-neutral-500 tracking-wider flex items-center gap-1.5">
+                      <span>{msg.model || 'VibeCoder AI'}</span>
+                      {msg.duration !== undefined && (
+                        <>
+                          <span className="opacity-50">•</span>
+                          <span>Took {Math.round(msg.duration)}s</span>
+                        </>
+                      )}
+                    </div>
                     <div 
                       className="notion-prose max-w-none" 
                       style={aiFont !== 'default' ? { fontFamily: aiFont } : undefined}
@@ -525,21 +575,21 @@ end
 
                     {/* Diffs Section */}
                     {msg.diffs && msg.diffs.length > 0 && (
-                      <div className="mt-4 bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden">
-                        <div className="bg-[#1a1a1a] border-b border-[#2a2a2a] px-3 py-1.5 flex items-center gap-2">
+                      <div className="mt-4 pt-3 border-t border-[#2a2a2a]/50">
+                        <div className="flex items-center gap-2 mb-2">
                           <CheckCircle size={12} className="text-emerald-500" />
-                          <span className="text-[11px] font-semibold tracking-wider text-neutral-400 uppercase">Synced Updates</span>
+                          <span className="text-[11px] font-semibold tracking-wider text-neutral-500 uppercase">Synced Updates</span>
                         </div>
-                        <div className="divide-y divide-[#2a2a2a]">
+                        <div className="space-y-1">
                           {msg.diffs.map((diff, idx) => (
-                            <div key={idx} className="flex items-center justify-between px-3 py-2">
-                              <span className="text-xs font-mono text-neutral-300 truncate pr-4">{diff.path}</span>
+                            <div key={idx} className="flex items-center justify-between px-1 py-1">
+                              <span className="text-xs font-mono text-neutral-400 truncate pr-4">{diff.path}</span>
                               <div className="flex items-center gap-3 shrink-0">
                                 {diff.linesAdded > 0 && (
-                                  <span className="text-[11px] font-mono text-emerald-400">+{diff.linesAdded} lines</span>
+                                  <span className="text-[11px] font-mono text-emerald-500/80">+{diff.linesAdded} lines</span>
                                 )}
                                 {diff.linesRemoved > 0 && (
-                                  <span className="text-[11px] font-mono text-rose-400">-{diff.linesRemoved} lines</span>
+                                  <span className="text-[11px] font-mono text-rose-500/80">-{diff.linesRemoved} lines</span>
                                 )}
                               </div>
                             </div>
@@ -559,7 +609,11 @@ end
         {isLoading && (
           <div className="w-full flex max-w-3xl">
             <div className="flex-1 space-y-1">
-              <div className="text-[10px] uppercase font-bold text-neutral-500 tracking-wider">VibeCoder AI</div>
+              <div className="text-[11px] font-medium text-neutral-500 tracking-wider flex items-center gap-1.5">
+                <span>{selectedModel || 'VibeCoder AI'}</span>
+                <span className="opacity-50">•</span>
+                <span>Running for {runningDuration}s</span>
+              </div>
               <div className="flex items-center gap-1.5 h-6">
                 <div className="w-1.5 h-1.5 bg-neutral-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
                 <div className="w-1.5 h-1.5 bg-neutral-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
@@ -573,24 +627,33 @@ end
       </div>
 
       {/* Bottom Gradient Fade for Messages */}
-      <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black via-black/90 to-transparent pointer-events-none z-10" />
+      <div className="absolute bottom-0 left-0 right-0 h-96 bg-gradient-to-t from-black via-black/95 to-transparent pointer-events-none z-10" />
 
       {/* Floating Input Box Area with Preset Chips above */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-3rem)] max-w-3xl flex flex-col gap-2 z-20">
         
         {/* Horizontal Quick Prompt Chips */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 px-1 scrollbar-none no-scrollbar">
-          {QUICK_PROMPT_PRESETS.map((preset, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => handleSend(preset.prompt)}
-              disabled={isLoading}
-              className="text-[12px] font-medium bg-[#2a2a2a]/50 backdrop-blur-xl hover:bg-[#3a3a3a]/60 text-white px-3.5 py-1.5 rounded-xl whitespace-nowrap transition-colors shrink-0 flex items-center gap-1.5"
-            >
-              <CornerDownRight size={13} className="text-white opacity-70" strokeWidth={2.5} /> {preset.label}
-            </button>
-          ))}
+          {suggestedPrompts === null ? (
+            Array.from({ length: 4 }).map((_, idx) => (
+              <div 
+                key={`skeleton-${idx}`} 
+                className="h-[32px] w-[140px] rounded-xl bg-[#2a2a2a]/50 backdrop-blur-xl animate-pulse shrink-0" 
+              />
+            ))
+          ) : (
+            suggestedPrompts.map((preset, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleSend(preset.prompt)}
+                disabled={isLoading}
+                className="text-[12px] font-medium bg-[#2a2a2a]/50 backdrop-blur-xl hover:bg-[#3a3a3a]/60 text-white px-3.5 py-1.5 rounded-xl whitespace-nowrap transition-colors shrink-0 flex items-center gap-1.5"
+              >
+                <CornerDownRight size={13} className="text-white opacity-70" strokeWidth={2.5} /> {preset.label}
+              </button>
+            ))
+          )}
         </div>
 
         {/* Input Prompt Box - Sleek styling matching home page */}
@@ -663,16 +726,28 @@ end
                 {isListening ? <MicOff size={16} /> : <Mic size={16} />}
               </button>
 
-              {/* Send Button */}
-              <button 
-                onClick={() => handleSend()}
-                disabled={isLoading || !input.trim()}
-                className={`w-9 h-9 disabled:opacity-50 text-black rounded-lg flex items-center justify-center shrink-0 ${sendBtn3D ? 'shadow-[0_4px_0_#000000,inset_0_1px_1px_rgba(255,255,255,0.4)] active:shadow-[0_0px_0_#000000,inset_0_1px_1px_rgba(255,255,255,0.4)] active:translate-y-[4px] transition-transform duration-75' : 'shadow-sm transition-all'}`}
-                style={{ backgroundColor: sendBtnColor }}
-                title="Send message"
-              >
-                <ArrowUpRight className="w-5 h-5 text-black" />
-              </button>
+              {/* Send / Stop Button */}
+              {isLoading ? (
+                <button
+                  type="button"
+                  onClick={handleStopGeneration}
+                  className={`w-9 h-9 text-black rounded-lg flex items-center justify-center shrink-0 ${sendBtn3D ? 'shadow-[0_4px_0_#000000,inset_0_1px_1px_rgba(255,255,255,0.4)] active:shadow-[0_0px_0_#000000,inset_0_1px_1px_rgba(255,255,255,0.4)] active:translate-y-[4px] transition-transform duration-75' : 'shadow-sm transition-all'}`}
+                  style={{ backgroundColor: sendBtnColor }}
+                  title="Stop generation"
+                >
+                  <div className="w-3 h-3 bg-black rounded-[2px]" />
+                </button>
+              ) : (
+                <button 
+                  onClick={() => handleSend()}
+                  disabled={!input.trim()}
+                  className={`w-9 h-9 disabled:opacity-50 text-black rounded-lg flex items-center justify-center shrink-0 ${sendBtn3D ? 'shadow-[0_4px_0_#000000,inset_0_1px_1px_rgba(255,255,255,0.4)] active:shadow-[0_0px_0_#000000,inset_0_1px_1px_rgba(255,255,255,0.4)] active:translate-y-[4px] transition-transform duration-75' : 'shadow-sm transition-all'}`}
+                  style={{ backgroundColor: sendBtnColor }}
+                  title="Send message"
+                >
+                  <ArrowUpRight className="w-5 h-5 text-black" />
+                </button>
+              )}
             </div>
           </div>
         </div>

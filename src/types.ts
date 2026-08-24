@@ -3,6 +3,8 @@ export interface Message {
   content: string;
   image?: string;
   diffs?: { path: string; linesAdded: number; linesRemoved: number }[];
+  model?: string;
+  duration?: number;
 }
 
 export interface Project {
@@ -12,6 +14,7 @@ export interface Project {
   createdAt: number;
   status: 'waiting' | 'connected';
   messages: Message[];
+  files?: { path: string; type: string; content: string }[];
 }
 
 export type ThinkingLevel = 'NONE' | 'MINIMAL' | 'LOW' | 'MEDIUM' | 'HIGH' | 'XHIGH' | 'MAX';

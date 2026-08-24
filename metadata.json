@@ -1,6 +1,6 @@
 {
   "name": "Roblox VibeCoder",
   "description": "An AI coding assistant for building full Roblox games, with a connection panel for a Roblox Studio plugin.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": ["display-capture"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

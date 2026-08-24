@@ -40,6 +40,9 @@ import { BlogPage } from './components/BlogPage';
 import { PricingPage } from './components/PricingPage';
 import { AuthPage } from './components/AuthPage';
 import { SettingsModal } from './components/SettingsModal';
+import { ProductIntroModal } from './components/ProductIntroModal';
+import { ArtifactsPanel } from './components/ArtifactsPanel';
+
 import { Project, Message, GEMINI_MODELS } from './types';
 
 // Random project name generator for starting a new project smoothly
@@ -94,10 +97,18 @@ export default function App() {
   });
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [connectPin, setConnectPin] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPin, setGeneratedPin] = useState<string | null>(null);
+
+  const [showIntro, setShowIntro] = useState(false);
+
+  useEffect(() => {
+    // Intro popup removed per user request
+  }, [view]);
+
   const [isCopied, setIsCopied] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -113,12 +124,16 @@ export default function App() {
   const [sendBtnColor, setSendBtnColor] = useState('#b0b0b0');
   const [sendBtn3D, setSendBtn3D] = useState(false);
   const homeModelDropdownRef = useRef<HTMLDivElement>(null);
+  
+  const [isArtifactsPanelOpen, setIsArtifactsPanelOpen] = useState(false);
+  const [artifactsEnabled, setArtifactsEnabled] = useState(false);
 
   useEffect(() => {
     let lastSyncData = '';
     const interval = setInterval(() => {
       setSendBtnColor(localStorage.getItem('vibecoder_send_btn_color') || '#b0b0b0');
       setSendBtn3D(localStorage.getItem('vibecoder_send_btn_3d') === 'true');
+      setArtifactsEnabled(localStorage.getItem('vibecoder_exp_artifacts') === 'true');
       
       // Auto-sync to database if authenticated
       if (session?.user) {
@@ -238,7 +253,8 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           pin: activeProject.pin,
-          history: formattedHistory
+          history: formattedHistory,
+          files: activeProject.files
         })
       })
       .then(res => res.json())
@@ -371,6 +387,16 @@ export default function App() {
     }));
   };
 
+  const handleUpdateProjectFiles = (files: { path: string; type: string; content: string }[]) => {
+    if (!activeProjectId) return;
+    setProjects(prev => prev.map(p => {
+      if (p.id === activeProjectId) {
+        return { ...p, files };
+      }
+      return p;
+    }));
+  };
+
   const copyPin = () => {
     if (!generatedPin) return;
     navigator.clipboard.writeText(generatedPin);
@@ -478,6 +504,19 @@ export default function App() {
             >
               <Plus size={18} strokeWidth={2.5} />
               New Project
+            </button>
+          </div>
+
+          <div className="px-4 pt-2">
+            <button
+              onClick={() => {
+                setIsSearchModalOpen(true);
+                setSearchQuery('');
+              }}
+              className="w-full py-2 hover:bg-[#2a2a2a] text-[#e0e0e0] font-medium text-[14px] rounded-lg flex items-center gap-2 transition-all px-3"
+            >
+              <Search size={16} className="text-[#a0a0a0]" />
+              Search
             </button>
           </div>
 
@@ -590,7 +629,7 @@ export default function App() {
       </div>
 
       {/* Main Page Area - Full bleed, no padding/curves */}
-      <div className="flex-1 bg-[#1a1a1a] h-full flex flex-col relative overflow-hidden">
+      <div className="flex-1 bg-black h-full flex flex-col relative overflow-hidden">
 
           {/* Floating Open Sidebar Button (visible when sidebar is closed) */}
           {!isSidebarOpen && (
@@ -607,13 +646,22 @@ export default function App() {
 
           {activeProject ? (
             /* ACTIVE CHAT WORKSPACE (Takes up full 100% of pure black panel - no files) */
-            <ChatPanel 
-              key={activeProject.id}
-              project={activeProject}
-              onMessagesChange={handleSendMessage}
-              selectedModel={selectedModel}
-              setSelectedModel={setSelectedModel}
-            />
+            <div className="flex w-full h-full">
+              <ChatPanel 
+                key={activeProject.id}
+                project={activeProject}
+                onMessagesChange={handleSendMessage}
+                onFilesUpdate={handleUpdateProjectFiles}
+                selectedModel={selectedModel}
+                setSelectedModel={setSelectedModel}
+                artifactsEnabled={artifactsEnabled}
+                isArtifactsPanelOpen={isArtifactsPanelOpen}
+                setIsArtifactsPanelOpen={setIsArtifactsPanelOpen}
+              />
+              {artifactsEnabled && isArtifactsPanelOpen && (
+                <ArtifactsPanel project={activeProject} onClose={() => setIsArtifactsPanelOpen(false)} onFilesUpdate={handleUpdateProjectFiles} />
+              )}
+            </div>
           ) : (
             /* EXQUISITE COMPACT HOME VIEW FOR CREATING NEW PROJECTS */
             <div className="h-full w-full relative overflow-hidden flex flex-col justify-center items-center">
@@ -806,7 +854,83 @@ export default function App() {
           )}
         </div>
         
-        {/* Settings Modal */}
+        
+      {/* Project Search Modal */}
+      {isSearchModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-24 z-[100] animate-in fade-in duration-200 p-4">
+          <div className="w-full max-w-xl bg-[#111111] border border-white/5 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[60vh]">
+            {/* Search Input Area */}
+            <div className="flex items-center px-4 border-b border-white/5 shrink-0">
+              <Search size={18} className="text-neutral-500" />
+              <input 
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search projects"
+                className="flex-1 bg-transparent border-none text-white placeholder-neutral-500 text-[15px] focus:outline-none focus:ring-0 py-4 px-3"
+                autoFocus
+              />
+              <button 
+                onClick={() => {
+                  setIsSearchModalOpen(false);
+                  setSearchQuery('');
+                }}
+                className="text-neutral-500 hover:text-white transition-colors p-1"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            
+            {/* Results Area */}
+            <div className="flex-1 overflow-y-auto bg-[#111111] pb-2">
+              <div className="px-5 py-4">
+                <div className="text-[11px] font-bold tracking-wider text-neutral-500 mb-2">RECENT PROJECTS</div>
+                <div className="space-y-1">
+                  {filteredProjects.length === 0 ? (
+                    <div className="py-12 text-center text-[15px] font-medium text-neutral-500">
+                      No projects found
+                    </div>
+                  ) : (
+                    filteredProjects.map((p) => {
+                      const isActive = p.id === activeProjectId;
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => {
+                            handleSelectProject(p.id);
+                            setIsSearchModalOpen(false);
+                            setSearchQuery('');
+                          }}
+                          className={`group w-full flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all ${
+                            isActive 
+                              ? 'bg-[#2a2a2a]/50 text-white' 
+                              : 'text-[#a0a0a0] hover:bg-white/5'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-[#252525]">
+                              <Code size={16} className="text-[#808080]" />
+                            </div>
+                            <div className="truncate flex flex-col items-start justify-center gap-0.5">
+                              <div className="text-[14px] font-semibold text-[#f0f0f0] truncate leading-tight">{p.name}</div>
+                              <div className="text-[12px] text-[#606060] leading-tight">
+                                {new Date(p.createdAt).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Modal */}
+
         <SettingsModal
           isOpen={isSettingsModalOpen}
           onClose={() => setIsSettingsModalOpen(false)}
@@ -830,6 +954,15 @@ export default function App() {
           selectedModel={selectedModel}
           onModelChange={setSelectedModel}
         />
+
+        {showIntro && (
+          <ProductIntroModal 
+            onClose={() => {
+              setShowIntro(false);
+              localStorage.setItem('vibecoder_has_seen_intro', 'true');
+            }} 
+          />
+        )}
     </div>
   );
 }
