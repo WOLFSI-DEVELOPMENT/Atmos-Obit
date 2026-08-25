@@ -35,6 +35,7 @@ export function HomeLayout({
   const [isPleaseConnectModalOpen, setIsPleaseConnectModalOpen] = useState(false);
   const [isPinCopied, setIsPinCopied] = useState(false);
   const connectDropdownRef = useRef<HTMLDivElement>(null);
+  const connectDropdownMenuRef = useRef<HTMLDivElement>(null);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedHomeProjectId, setSelectedHomeProjectId] = useState<string | null>(null);
@@ -52,7 +53,10 @@ export function HomeLayout({
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
       }
-      if (connectDropdownRef.current && !connectDropdownRef.current.contains(event.target as Node)) {
+      if (
+        connectDropdownRef.current && !connectDropdownRef.current.contains(event.target as Node) &&
+        (!connectDropdownMenuRef.current || !connectDropdownMenuRef.current.contains(event.target as Node))
+      ) {
         setIsConnectDropdownOpen(false);
       }
       if (modelDropdownRef.current && !modelDropdownRef.current.contains(event.target as Node)) {
@@ -207,73 +211,6 @@ end
               <Cloud size={14} className="text-white/60" />
               Connect
             </button>
-
-            {isConnectDropdownOpen && (
-              <div className="card absolute top-full right-0 mt-2 w-72 bg-[#2a2a2a]/95 backdrop-blur-xl rounded-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150 shadow-2xl border border-white/5">
-                <div className="text-[10px] text-neutral-400 uppercase tracking-widest font-bold mb-2 flex items-center justify-between">
-                  <span>Roblox PIN</span>
-                  {selectedProject && (
-                    <button
-                      onClick={() => {
-                        setIsConnectDropdownOpen(false);
-                        window.dispatchEvent(new CustomEvent('regenerate-code'));
-                      }}
-                      className="flex items-center gap-1 text-[11px] text-neutral-300 hover:text-white bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded-md transition-colors"
-                      title="Regenerate Code & PIN"
-                    >
-                      <RefreshCw size={11} /> Regenerate Code
-                    </button>
-                  )}
-                </div>
-                {selectedProject ? (
-                  <>
-                    <div className="flex items-center justify-between bg-[#1a1a1a] p-2.5 rounded-xl">
-                      <span className="font-mono font-bold text-base tracking-[0.1em] text-white select-all pl-1">
-                        {selectedProject.pin}
-                      </span>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(selectedProject.pin);
-                          setIsPinCopied(true);
-                          setTimeout(() => setIsPinCopied(false), 2000);
-                        }}
-                        className="p-2 hover:bg-white/10 rounded-lg text-neutral-400 hover:text-white transition-colors"
-                        title="Copy PIN"
-                      >
-                        {isPinCopied ? <Check size={14} className="text-white" /> : <Copy size={14} />}
-                      </button>
-                    </div>
-                    <p className="text-[10px] text-neutral-400 mt-2.5 leading-normal">
-                      Enter this PIN in the VibeCoder Roblox Studio plugin to sync.
-                    </p>
-                    <div className="mt-3 pt-3 border-t border-white/5">
-                      <button
-                        onClick={() => {
-                          setIsConnectDropdownOpen(false);
-                          downloadPluginLuaScript(selectedProject.pin);
-                        }}
-                        className="w-full py-2 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
-                      >
-                        <Download size={13} /> Install Plugin
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center py-3">
-                    <p className="text-xs text-neutral-400 mb-3">Please choose or create a project first to view your connection PIN.</p>
-                    <button
-                      onClick={() => {
-                        setIsConnectDropdownOpen(false);
-                        setIsDropdownOpen(true);
-                      }}
-                      className="w-full py-2 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold rounded-xl transition-colors"
-                    >
-                      Choose Project
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
 
@@ -414,6 +351,74 @@ end
             </div>
           </div>
         </div>
+
+        {/* Connect Dropdown Menu */}
+        {isConnectDropdownOpen && (
+          <div ref={connectDropdownMenuRef} className="card absolute -top-[4px] right-2 w-72 bg-[#2a2a2a]/95 backdrop-blur-xl rounded-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150 shadow-2xl border border-white/5">
+            <div className="text-[10px] text-neutral-400 uppercase tracking-widest font-bold mb-2 flex items-center justify-between">
+              <span>Roblox PIN</span>
+              {selectedProject && (
+                <button
+                  onClick={() => {
+                    setIsConnectDropdownOpen(false);
+                    window.dispatchEvent(new CustomEvent('regenerate-code'));
+                  }}
+                  className="flex items-center gap-1 text-[11px] text-neutral-300 hover:text-white bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded-md transition-colors"
+                  title="Regenerate Code & PIN"
+                >
+                  <RefreshCw size={11} /> Regenerate Code
+                </button>
+              )}
+            </div>
+            {selectedProject ? (
+              <>
+                <div className="flex items-center justify-between bg-[#1a1a1a] p-2.5 rounded-xl">
+                  <span className="font-mono font-bold text-base tracking-[0.1em] text-white select-all pl-1">
+                    {selectedProject.pin}
+                  </span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(selectedProject.pin);
+                      setIsPinCopied(true);
+                      setTimeout(() => setIsPinCopied(false), 2000);
+                    }}
+                    className="p-2 hover:bg-white/10 rounded-lg text-neutral-400 hover:text-white transition-colors"
+                    title="Copy PIN"
+                  >
+                    {isPinCopied ? <Check size={14} className="text-white" /> : <Copy size={14} />}
+                  </button>
+                </div>
+                <p className="text-[10px] text-neutral-400 mt-2.5 leading-normal">
+                  Enter this PIN in the VibeCoder Roblox Studio plugin to sync.
+                </p>
+                <div className="mt-3 pt-3 border-t border-white/5">
+                  <button
+                    onClick={() => {
+                      setIsConnectDropdownOpen(false);
+                      downloadPluginLuaScript(selectedProject.pin);
+                    }}
+                    className="w-full py-2 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Download size={13} /> Install Plugin
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-3">
+                <p className="text-xs text-neutral-400 mb-3">Please choose or create a project first to view your connection PIN.</p>
+                <button
+                  onClick={() => {
+                    setIsConnectDropdownOpen(false);
+                    setIsDropdownOpen(true);
+                  }}
+                  className="w-full py-2 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold rounded-xl transition-colors"
+                >
+                  Choose Project
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Dropdown */}
           {isDropdownOpen && (

@@ -404,29 +404,103 @@ export default function ChatPanel({
   };
 
   const downloadPluginLuaScript = () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
     const pluginScriptContent = `-- VibeCoder Roblox Studio Sync Plugin
--- Place this inside Roblox Studio in a Plugin script or Command Bar
+-- Place this inside Roblox Studio as a Script or run in Command Bar
 
 local HttpService = game:GetService("HttpService")
+local ServerScriptService = game:GetService("ServerScriptService")
+local StarterPlayer = game:GetService("StarterPlayer")
+local StarterPlayerScripts = StarterPlayer:WaitForChild("StarterPlayerScripts")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StarterGui = game:GetService("StarterGui")
+
 local PIN = "${project.pin}"
-local API_URL = "https://ais-dev-uhs6vkljauppzsc33vniwl-20399702210.us-west2.run.app"
+local API_URL = "${origin}"
 
-print("[VibeCoder Plugin] Connecting with PIN: " .. PIN)
+print("[VibeCoder Plugin] Connecting to session PIN: " .. PIN .. " at " .. API_URL)
 
-local success, response = pcall(function()
-    return HttpService:RequestAsync({
-        Url = API_URL .. "/api/plugin/connect",
-        Method = "POST",
-        Headers = { ["Content-Type"] = "application/json" },
-        Body = HttpService:JSONEncode({ pin = PIN })
-    })
-end)
+local isRunning = true
 
-if success then
-    print("[VibeCoder Plugin] Connected successfully! Listening for Luau code syncs...")
-else
-    warn("[VibeCoder Plugin] Connection failed. Check HTTP Requests in Game Settings.")
+local function postJson(endpoint, data)
+    local ok, res = pcall(function()
+        return HttpService:RequestAsync({
+            Url = API_URL .. endpoint,
+            Method = "POST",
+            Headers = { ["Content-Type"] = "application/json" },
+            Body = HttpService:JSONEncode(data)
+        })
+    end)
+    return ok, res
 end
+
+local function disconnect()
+    if not isRunning then return end
+    isRunning = false
+    pcall(function()
+        HttpService:RequestAsync({
+            Url = API_URL .. "/api/plugin/disconnect",
+            Method = "POST",
+            Headers = { ["Content-Type"] = "application/json" },
+            Body = HttpService:JSONEncode({ pin = PIN })
+        })
+    end)
+    print("[VibeCoder Plugin] Disconnected session " .. PIN)
+end
+
+-- Connect initial session
+local ok, res = postJson("/api/plugin/connect", { pin = PIN })
+if not ok or (res and res.StatusCode ~= 200) then
+    warn("[VibeCoder Plugin] Failed to connect. Ensure 'Allow HTTP Requests' is enabled in Game Settings -> Security.")
+    return
+end
+
+print("[VibeCoder Plugin] Connected successfully! Live syncing enabled.")
+
+-- Handle unload / close events
+if typeof(plugin) == "Instance" and plugin:IsA("Plugin") then
+    plugin.Unloading:Connect(disconnect)
+end
+game:BindToClose(disconnect)
+
+-- Main synchronization loop
+task.spawn(function()
+    while isRunning do
+        task.wait(1.5)
+        
+        local pollOk, pollRes = pcall(function()
+            return HttpService:RequestAsync({
+                Url = API_URL .. "/api/plugin/poll/" .. PIN,
+                Method = "GET",
+                Headers = { ["Content-Type"] = "application/json" }
+            })
+        end)
+
+        if pollOk and pollRes and pollRes.StatusCode == 200 then
+            local data = HttpService:JSONDecode(pollRes.Body)
+            if data and data.pending and #data.pending > 0 then
+                for _, item in ipairs(data.pending) do
+                    print("[VibeCoder Plugin] Syncing incoming script: " .. tostring(item.path or item.type))
+                    -- Create or update script instance
+                    local parent = ServerScriptService
+                    if item.type == "LocalScript" then
+                        parent = StarterPlayerScripts
+                    elseif item.type == "ModuleScript" then
+                        parent = ReplicatedStorage
+                    end
+                    
+                    local newScript = Instance.new(item.type or "Script")
+                    newScript.Name = item.path or ("VibeCoder_" .. tostring(item.id or os.time()))
+                    newScript.Source = item.code or ""
+                    newScript.Parent = parent
+                    print("[VibeCoder Plugin] Installed " .. newScript.Name .. " in " .. parent.Name)
+                end
+            end
+        elseif not pollOk then
+            -- Silent retry on transient network drops
+        end
+    end
+end)
 `;
     const blob = new Blob([pluginScriptContent], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);

@@ -350,17 +350,19 @@ export default function App() {
       })
       .then(res => res.json())
       .then(data => {
-        if (data.status === 'connected' && activeProject.status !== 'connected') {
-          updateProjectStatus(activeProject.id, 'connected');
-        }
+        const newStatus = data.status === 'connected' ? 'connected' : 'waiting';
+        updateProjectStatus(activeProject.id, newStatus);
       })
       .catch(err => console.error('Error syncing history with server', err));
+
+      startPolling(activeProject.pin, activeProject.id);
     }
   }, [activeProjectId]);
 
   const updateProjectStatus = (id: string, status: 'waiting' | 'connected') => {
     setProjects(prev => prev.map(p => {
       if (p.id === id) {
+        if (p.status === status) return p;
         return { ...p, status };
       }
       return p;
@@ -375,10 +377,8 @@ export default function App() {
         const res = await fetch(`/api/sync/status/${pin}`);
         if (res.ok) {
           const data = await res.json();
-          if (data.status === 'connected') {
-            updateProjectStatus(projectId, 'connected');
-            if (pollingRef.current) clearInterval(pollingRef.current);
-          }
+          const newStatus = data.status === 'connected' ? 'connected' : 'waiting';
+          updateProjectStatus(projectId, newStatus);
         }
       } catch (e) {
         console.error('Polling error', e);
@@ -514,11 +514,8 @@ export default function App() {
   const handleSelectProject = (projId: string) => {
     setActiveProjectId(projId);
     setGeneratedPin(null);
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current);
-    }
     const selected = projects.find(p => p.id === projId);
-    if (selected && selected.status === 'waiting') {
+    if (selected) {
       startPolling(selected.pin, selected.id);
     }
   };

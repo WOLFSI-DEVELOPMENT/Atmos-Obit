@@ -32,66 +32,111 @@ interface Session {
   gameState?: any;
   generatedFiles: { path: string; type: string; content: string; }[];
   lastActive: number;
+  pluginLastActive?: number;
   history: { role: 'user' | 'model'; parts: any[] }[];
 }
 
-
+const memorySessions = new Map<string, Session>();
 
 let dbInitialized = false;
 async function ensureDb() {
   if (dbInitialized || !DATABASE_URL) return;
-  await sql`
-    CREATE TABLE IF NOT EXISTS sync_sessions (
-      pin VARCHAR(6) PRIMARY KEY,
-      status VARCHAR(20) NOT NULL,
-      pending_code JSONB NOT NULL DEFAULT '[]',
-      game_state JSONB,
-      generated_files JSONB NOT NULL DEFAULT '[]',
-      history JSONB NOT NULL DEFAULT '[]',
-      last_active BIGINT NOT NULL
-    );
-  `;
-  dbInitialized = true;
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS sync_sessions (
+        pin VARCHAR(6) PRIMARY KEY,
+        status VARCHAR(20) NOT NULL,
+        pending_code JSONB NOT NULL DEFAULT '[]',
+        game_state JSONB,
+        generated_files JSONB NOT NULL DEFAULT '[]',
+        history JSONB NOT NULL DEFAULT '[]',
+        last_active BIGINT NOT NULL,
+        plugin_last_active BIGINT DEFAULT 0
+      );
+    `;
+    await sql`
+      ALTER TABLE sync_sessions ADD COLUMN IF NOT EXISTS plugin_last_active BIGINT DEFAULT 0;
+    `;
+    dbInitialized = true;
+  } catch (err) {
+    console.warn('ensureDb warning:', err);
+    dbInitialized = true;
+  }
 }
 
-async function getSession(pin: string) {
-  if (!DATABASE_URL) return null;
+async function getSession(pin: string): Promise<Session | null> {
+  const memSession = memorySessions.get(pin);
+  if (!DATABASE_URL) return memSession || null;
+
   await ensureDb();
-  const rows = await sql`SELECT * FROM sync_sessions WHERE pin = ${pin}`;
-  if (rows.length === 0) return null;
-  const row = rows[0];
-  return {
-    pin: row.pin,
-    status: row.status,
-    pendingCode: row.pending_code,
-    gameState: row.game_state,
-    generatedFiles: row.generated_files,
-    history: row.history,
-    lastActive: Number(row.last_active)
-  };
+  try {
+    const rows = await sql`SELECT * FROM sync_sessions WHERE pin = ${pin}`;
+    if (rows.length === 0) return memSession || null;
+    const row = rows[0];
+    const session: Session = {
+      pin: row.pin,
+      status: row.status,
+      pendingCode: row.pending_code || [],
+      gameState: row.game_state || null,
+      generatedFiles: row.generated_files || [],
+      history: row.history || [],
+      lastActive: Number(row.last_active),
+      pluginLastActive: Number(row.plugin_last_active || 0)
+    };
+    memorySessions.set(pin, session);
+    return session;
+  } catch (err) {
+    console.error('getSession error:', err);
+    return memSession || null;
+  }
 }
 
-async function saveSession(session: any) {
+async function saveSession(session: Session) {
+  memorySessions.set(session.pin, session);
   if (!DATABASE_URL) return;
+
   await ensureDb();
-  await sql`
-    INSERT INTO sync_sessions (pin, status, pending_code, game_state, generated_files, history, last_active)
-    VALUES (${session.pin}, ${session.status}, ${JSON.stringify(session.pendingCode)}, ${session.gameState ? JSON.stringify(session.gameState) : null}, ${JSON.stringify(session.generatedFiles)}, ${JSON.stringify(session.history)}, ${session.lastActive})
-    ON CONFLICT (pin) DO UPDATE SET
-      status = EXCLUDED.status,
-      pending_code = EXCLUDED.pending_code,
-      game_state = EXCLUDED.game_state,
-      generated_files = EXCLUDED.generated_files,
-      history = EXCLUDED.history,
-      last_active = EXCLUDED.last_active;
-  `;
+  try {
+    await sql`
+      INSERT INTO sync_sessions (pin, status, pending_code, game_state, generated_files, history, last_active, plugin_last_active)
+      VALUES (
+        ${session.pin}, 
+        ${session.status}, 
+        ${JSON.stringify(session.pendingCode)}, 
+        ${session.gameState ? JSON.stringify(session.gameState) : null}, 
+        ${JSON.stringify(session.generatedFiles)}, 
+        ${JSON.stringify(session.history)}, 
+        ${session.lastActive},
+        ${session.pluginLastActive || 0}
+      )
+      ON CONFLICT (pin) DO UPDATE SET
+        status = EXCLUDED.status,
+        pending_code = EXCLUDED.pending_code,
+        game_state = EXCLUDED.game_state,
+        generated_files = EXCLUDED.generated_files,
+        history = EXCLUDED.history,
+        last_active = EXCLUDED.last_active,
+        plugin_last_active = EXCLUDED.plugin_last_active;
+    `;
+  } catch (err) {
+    console.error('saveSession error:', err);
+  }
 }
 
 async function cleanupStaleSessions() {
-  if (!DATABASE_URL) return;
-  await ensureDb();
   const cutoff = Date.now() - 1000 * 60 * 60;
-  await sql`DELETE FROM sync_sessions WHERE last_active < ${cutoff}`;
+  for (const [pin, s] of memorySessions.entries()) {
+    if (s.lastActive < cutoff) {
+      memorySessions.delete(pin);
+    }
+  }
+  if (!DATABASE_URL) return;
+  try {
+    await ensureDb();
+    await sql`DELETE FROM sync_sessions WHERE last_active < ${cutoff}`;
+  } catch (err) {
+    console.error('cleanupStaleSessions error:', err);
+  }
 }
 
 export const app = express();
@@ -102,7 +147,7 @@ app.use(cookieParser());
 // --- API Routes ---
 
 app.get('/ads.txt', (req, res) => {
-  res.type('text/plain').send('google.com, pub-7029279570287128, DIRECT, f08c47fec0942fa0');
+  res.type('text/plain').send('google.com, pub-7029279570287128, DIRECT, f08c47fec0942fa0\n');
 });
 
 app.use((req, res, next) => {
@@ -119,16 +164,17 @@ app.post('/api/sync/create', async (req, res) => {
     pin += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   
-  const session = {
+  const session: Session = {
     pin,
     status: 'waiting',
-    pendingCode: [], gameState: null,
+    pendingCode: [],
+    gameState: null,
     generatedFiles: [],
     lastActive: Date.now(),
+    pluginLastActive: 0,
     history: []
   };
   await saveSession(session);
-  // Cleanup occasionally
   if (Math.random() < 0.1) cleanupStaleSessions().catch(console.error);
   
   res.json({ pin });
@@ -144,9 +190,11 @@ app.post('/api/sync/restore', async (req, res) => {
     session = {
       pin,
       status: 'waiting',
-      pendingCode: [], gameState: null,
+      pendingCode: [],
+      gameState: null,
       generatedFiles: files || [],
       lastActive: Date.now(),
+      pluginLastActive: 0,
       history: history || []
     };
   } else {
@@ -163,13 +211,29 @@ app.post('/api/sync/restore', async (req, res) => {
   res.json({ success: true, status: session.status, history: session.history });
 });
 
-// 2. Web App: Check session status
+// 2. Web App: Check session status (with real-time heartbeat timeout check)
 app.get('/api/sync/status/:pin', async (req, res) => {
   const session = await getSession(req.params.pin);
   if (!session) return res.status(404).json({ error: 'Session not found' });
+  
   session.lastActive = Date.now();
-  await saveSession(session);
-  res.json({ status: session.status });
+  
+  // If status is connected, verify that Roblox Studio plugin has pulsed recently (within 6 seconds)
+  const PLUGIN_HEARTBEAT_TIMEOUT_MS = 6000;
+  if (session.status === 'connected') {
+    const lastSeen = session.pluginLastActive || 0;
+    if (Date.now() - lastSeen > PLUGIN_HEARTBEAT_TIMEOUT_MS) {
+      session.status = 'waiting';
+      await saveSession(session);
+    }
+  }
+
+  res.json({ 
+    status: session.status,
+    connected: session.status === 'connected',
+    lastActive: session.lastActive,
+    pluginLastActive: session.pluginLastActive || 0
+  });
 });
 
 // 3. Plugin: Connect to session
@@ -184,8 +248,35 @@ app.post('/api/plugin/connect', async (req, res) => {
   
   session.status = 'connected';
   session.lastActive = Date.now();
+  session.pluginLastActive = Date.now();
   await saveSession(session);
   res.json({ success: true, message: 'Connected to VibeCoder' });
+});
+
+// 3b. Plugin: Heartbeat
+app.post('/api/plugin/heartbeat', async (req, res) => {
+  const { pin } = req.body;
+  const session = await getSession(pin);
+  if (!session) return res.status(404).json({ error: 'Invalid PIN' });
+  
+  session.status = 'connected';
+  session.lastActive = Date.now();
+  session.pluginLastActive = Date.now();
+  await saveSession(session);
+  res.json({ success: true, status: 'connected' });
+});
+
+// 3c. Plugin: Disconnect (fired when Studio closes or plugin unloads)
+app.post('/api/plugin/disconnect', async (req, res) => {
+  const { pin } = req.body;
+  const session = await getSession(pin);
+  if (!session) return res.status(404).json({ error: 'Invalid PIN' });
+  
+  session.status = 'waiting';
+  session.pluginLastActive = 0;
+  session.lastActive = Date.now();
+  await saveSession(session);
+  res.json({ success: true, status: 'waiting' });
 });
 
 // 4. Plugin: Poll for pending code
@@ -194,6 +285,9 @@ app.get('/api/plugin/poll/:pin', async (req, res) => {
   if (!session) return res.status(404).json({ error: 'Session not found' });
   
   session.lastActive = Date.now();
+  session.pluginLastActive = Date.now();
+  session.status = 'connected';
+  
   const codeToSync = [...session.pendingCode];
   session.pendingCode = []; // Clear queue after fetching
   
@@ -217,6 +311,8 @@ app.post('/api/plugin/state', async (req, res) => {
   
   session.gameState = state;
   session.lastActive = Date.now();
+  session.pluginLastActive = Date.now();
+  session.status = 'connected';
   await saveSession(session);
   res.json({ success: true });
 });
