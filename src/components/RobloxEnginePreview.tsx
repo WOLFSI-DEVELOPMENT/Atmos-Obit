@@ -637,6 +637,12 @@ export function RobloxEnginePreview({ code, isPlayMode = false }: { code: string
 
       {/* 2D GUI Overlay */}
       <div className="absolute inset-0 z-20 pointer-events-none">
+        {rootGuiInstances.length > 0 && (
+          <div className="absolute top-3 right-3 bg-black/80 border border-neutral-800 text-neutral-300 text-[11px] font-medium px-3 py-1.5 rounded-full backdrop-blur-md flex items-center gap-1.5 pointer-events-auto shadow-lg">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Press <strong className="text-white">Play</strong> (F5) in Studio to test GUI</span>
+          </div>
+        )}
         {rootGuiInstances.map(gui => (
           <RobloxGuiNode key={gui.id} instance={gui} instances={instances} />
         ))}

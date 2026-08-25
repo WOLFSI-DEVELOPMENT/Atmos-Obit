@@ -821,6 +821,16 @@ end)
                             </div>
                           ))}
                         </div>
+
+                        {/* GUI Advice Callout */}
+                        {msg.diffs.some(d => /startergui|gui|hud|ui|screengui/i.test(d.path)) && (
+                          <div className="mt-3 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-[12px] text-neutral-300">
+                            <Play size={13} className="shrink-0 text-white" fill="currentColor" />
+                            <span>
+                              Press the <strong className="text-white">Play</strong> button (<kbd className="bg-neutral-800 text-neutral-200 px-1.5 py-0.5 rounded text-[11px] font-mono border border-neutral-700">F5</kbd>) in Roblox Studio to test and view your game GUI.
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

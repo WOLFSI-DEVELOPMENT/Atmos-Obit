@@ -435,6 +435,8 @@ Format:
 }
 DO NOT use markdown code blocks for the code. Only output the JSON.
 
+CRITICAL GUI ADVICE INSTRUCTION: Whenever you create, modify, or generate any GUI / UI (such as ScreenGui, StarterGui, Frames, TextButtons, TextLabels, ImageLabels, ImageButtons, TextBoxes, ScrollingFrames, HUDs, menus, inventories, shop UI, dialogs, health bars, or UI animation scripts), you MUST ALWAYS explicitly advise the user in your explanation that they must press the Play button (or press F5 / Play Here) in Roblox Studio to see and test the game GUI.
+
 CRITICAL: If the user request is purely conversational (e.g. "hello", "who are you"), provide a friendly response in "explanation" and leave "edits" empty [].`;
 
     
@@ -532,9 +534,36 @@ CRITICAL: If the user request is purely conversational (e.g. "hello", "who are y
       if (jsonMatch) {
           const data = JSON.parse(jsonMatch[0]);
           explanation = data.explanation || 'Code generated.';
+          const editsArray = data.edits || data.files || [];
+
+          // Detect if GUI elements or scripts were generated
+          let isGuiGenerated = false;
+          for (const edit of editsArray) {
+              const editPath = (edit.path || '').toLowerCase();
+              const editContent = (edit.content || edit.code || edit.replace || '');
+              if (
+                editPath.includes('startergui') ||
+                editPath.includes('gui') ||
+                editPath.includes('hud') ||
+                editPath.includes('ui') ||
+                /Instance\.new\(["'](ScreenGui|Frame|TextLabel|TextButton|ImageLabel|ImageButton|TextBox|ScrollingFrame|BillboardGui|SurfaceGui|UICorner|UIListLayout|UIGridLayout|UIPadding|UIStroke|UIGradient)/i.test(editContent)
+              ) {
+                isGuiGenerated = true;
+              }
+          }
+
+          if (/screengui|startergui|game gui|create a gui|make a gui|create ui|make ui|playergui/i.test(message) || /created (the|a) (gui|ui|screengui|hud|menu)/i.test(explanation)) {
+              isGuiGenerated = true;
+          }
+
+          if (isGuiGenerated) {
+              const lowerExp = explanation.toLowerCase();
+              if (!lowerExp.includes('play button') && !lowerExp.includes('press play') && !lowerExp.includes('press the play') && !lowerExp.includes('f5')) {
+                  explanation += '\n\n> 💡 **Roblox Studio Tip**: Press the **Play** button (<kbd>F5</kbd>) in Roblox Studio to view and test your game GUI!';
+              }
+          }
           
           if (session) {
-              const editsArray = data.edits || data.files || [];
               for (const edit of editsArray) {
                   if (edit.type === 'Icon') {
                       try {
