@@ -415,7 +415,7 @@ export default function App() {
         pin: data.pin,
         createdAt: Date.now(),
         status: 'waiting',
-        messages: initialPrompt ? [{role: 'user', content: initialPrompt}, {role: 'model', content: `Project created! Processing: ${initialPrompt}`}] : [
+        messages: initialPrompt ? [] : [
           { role: 'model', content: `Welcome to **${name}**! Your session PIN is \`${data.pin}\`.\n\nTo connect this workspace directly to Roblox Studio:\n1. Open your game in Roblox Studio.\n2. Open the **VibeCoder plugin**.\n3. Enter the PIN \`${data.pin}\` and click Connect.\n\nOnce synced, any scripts generated here will automatically load in Roblox Studio in real-time!` }
         ]
       };
@@ -587,7 +587,7 @@ export default function App() {
           <div className="py-2.5 px-4 flex items-center justify-between border-b border-transparent">
             <div className="flex items-center gap-3">
               <div className="w-[34px] h-[34px] rounded-xl flex items-center justify-center relative overflow-hidden bg-transparent">
-                <img src="https://res.cloudinary.com/dwthgcx5j/image/upload/v1787020978/rounded-image_1_q5ruom.png" alt="App Icon" className="w-full h-full object-cover" />
+                <img src="https://res.cloudinary.com/dwthgcx5j/image/upload/v1787673321/squircle-n4_abdl5u.png" alt="App Icon" className="w-full h-full object-cover" />
               </div>
               <span className="font-bold text-[18px] text-white tracking-tight whitespace-nowrap">Atmos orbit</span>
             </div>

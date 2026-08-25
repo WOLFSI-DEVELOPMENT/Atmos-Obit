@@ -26,7 +26,7 @@ export function ArticlesPage({ onNavigate }: ArticlesPageProps) {
           className="flex items-center gap-3 hover:opacity-80 transition-opacity"
         >
           <div className="w-8 h-8 rounded-lg flex items-center justify-center relative overflow-hidden bg-transparent">
-            <img src="https://res.cloudinary.com/dwthgcx5j/image/upload/v1787020978/rounded-image_1_q5ruom.png" alt="App Icon" className="w-full h-full object-cover" />
+            <img src="https://res.cloudinary.com/dwthgcx5j/image/upload/v1787673321/squircle-n4_abdl5u.png" alt="App Icon" className="w-full h-full object-cover" />
           </div>
           <span className="font-bold text-[16px] text-white tracking-tight">Atmos orbit</span>
         </button>
@@ -58,7 +58,7 @@ export function ArticlesPage({ onNavigate }: ArticlesPageProps) {
               </span>
               <div className="flex items-center gap-3">
                 <div className="w-6 h-6 rounded-full overflow-hidden bg-[#222]">
-                  <img src="https://res.cloudinary.com/dwthgcx5j/image/upload/v1787020978/rounded-image_1_q5ruom.png" alt="Author" className="w-full h-full object-cover" />
+                  <img src="https://res.cloudinary.com/dwthgcx5j/image/upload/v1787673321/squircle-n4_abdl5u.png" alt="Author" className="w-full h-full object-cover" />
                 </div>
                 <span className="text-[14px] text-[#a0a0a0] font-medium">{selectedArticle.author}</span>
               </div>

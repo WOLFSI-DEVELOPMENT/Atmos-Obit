@@ -164,6 +164,16 @@ export default function ChatPanel({
     const timer = setTimeout(() => {
       setSuggestedPrompts(QUICK_PROMPT_PRESETS);
     }, 1200);
+
+    const initialPrompt = localStorage.getItem('vibecoder_initial_prompt');
+    if (initialPrompt) {
+      localStorage.removeItem('vibecoder_initial_prompt');
+      const lastMsg = project.messages[project.messages.length - 1];
+      if (!lastMsg || lastMsg.content !== initialPrompt) {
+        handleSend(initialPrompt);
+      }
+    }
+
     return () => clearTimeout(timer);
   }, [project.id]);
 

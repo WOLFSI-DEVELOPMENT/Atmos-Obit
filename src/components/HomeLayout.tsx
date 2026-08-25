@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Cloud, Search, Plus, Mic, MicOff, Folder, Code, Terminal, Upload, X, RefreshCw, Bug, Check, ChevronDown, Monitor, GitBranch, ArrowUp, Zap, Sparkles, BrainCircuit, Gamepad2, Trophy, Coins, Sword } from 'lucide-react';
+import { Cloud, Search, Plus, Mic, MicOff, Folder, Code, Terminal, Upload, X, RefreshCw, Bug, Check, ChevronDown, Monitor, GitBranch, ArrowUp, Zap, Sparkles, BrainCircuit, Gamepad2, Trophy, Coins, Sword, Copy, Download } from 'lucide-react';
 import { Project, GEMINI_MODELS, OPENAI_MODELS, ANTHROPIC_MODELS } from '../types';
 
 interface HomeLayoutProps {
@@ -31,6 +31,11 @@ export function HomeLayout({
   sendBtnColor
 }: HomeLayoutProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isConnectDropdownOpen, setIsConnectDropdownOpen] = useState(false);
+  const [isPleaseConnectModalOpen, setIsPleaseConnectModalOpen] = useState(false);
+  const [isPinCopied, setIsPinCopied] = useState(false);
+  const connectDropdownRef = useRef<HTMLDivElement>(null);
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedHomeProjectId, setSelectedHomeProjectId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,15 +52,18 @@ export function HomeLayout({
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
       }
+      if (connectDropdownRef.current && !connectDropdownRef.current.contains(event.target as Node)) {
+        setIsConnectDropdownOpen(false);
+      }
       if (modelDropdownRef.current && !modelDropdownRef.current.contains(event.target as Node)) {
         setIsModelDropdownOpen(false);
       }
     };
-    if (isDropdownOpen) {
+    if (isDropdownOpen || isConnectDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isDropdownOpen]);
+  }, [isDropdownOpen, isConnectDropdownOpen]);
 
   const filteredProjects = projects.filter(p => 
     p.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -73,9 +81,58 @@ export function HomeLayout({
     setSelectedFile(null);
   };
 
+  const downloadPluginLuaScript = (pinToUse?: string) => {
+    const pin = pinToUse || selectedProject?.pin || "XXXXXX";
+    const pluginScriptContent = `-- VibeCoder Roblox Studio Sync Plugin
+-- Place this inside Roblox Studio in a Plugin script or Command Bar
+
+local HttpService = game:GetService("HttpService")
+local PIN = "${pin}"
+local API_URL = "https://ais-dev-uhs6vkljauppzsc33vniwl-20399702210.us-west2.run.app"
+
+print("[VibeCoder Plugin] Connecting with PIN: " .. PIN)
+
+local success, response = pcall(function()
+    return HttpService:RequestAsync({
+        Url = API_URL .. "/api/plugin/connect",
+        Method = "POST",
+        Headers = { ["Content-Type"] = "application/json" },
+        Body = HttpService:JSONEncode({ pin = PIN })
+    })
+end)
+
+if success then
+    print("[VibeCoder Plugin] Connected successfully! Listening for Luau code syncs...")
+else
+    warn("[VibeCoder Plugin] Connection failed. Check HTTP Requests in Game Settings.")
+end
+`;
+    const blob = new Blob([pluginScriptContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `VibeCoder_Studio_Plugin_${pin}.lua`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const handleSend = () => {
+    if (!selectedHomeProjectId) {
+      setIsPleaseConnectModalOpen(true);
+      return;
+    }
     if (!input.trim()) return;
     onSendMessage(input, selectedHomeProjectId);
+  };
+
+  const handleCardClick = (promptText: string) => {
+    if (!selectedHomeProjectId) {
+      setIsPleaseConnectModalOpen(true);
+      return;
+    }
+    setInput(promptText);
   };
 
   return (
@@ -110,19 +167,19 @@ export function HomeLayout({
 
       {/* Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 w-full max-w-4xl mb-12">
-        <button onClick={() => setInput("Build an obby obstacle course with checkpoints")} className="bg-transparent border border-[#2a2a2a] hover:border-white/20 transition-colors p-3 rounded-2xl flex flex-col items-start gap-3 text-left group">
+        <button onClick={() => handleCardClick("Build an obby obstacle course with checkpoints")} className="card bg-transparent border border-[#2a2a2a] hover:border-white/25 transition-colors p-3 rounded-2xl flex flex-col items-start gap-3 text-left group">
           <Trophy size={16} className="text-[#ff9f0a]" />
           <span className="text-[13px] font-medium text-white/90 group-hover:text-white">Build an obby course<br/>with checkpoints</span>
         </button>
-        <button onClick={() => setInput("Create an idle tycoon game with custom plots")} className="bg-transparent border border-[#2a2a2a] hover:border-white/20 transition-colors p-3 rounded-2xl flex flex-col items-start gap-3 text-left group">
+        <button onClick={() => handleCardClick("Create an idle tycoon game with custom plots")} className="card bg-transparent border border-[#2a2a2a] hover:border-white/25 transition-colors p-3 rounded-2xl flex flex-col items-start gap-3 text-left group">
           <Coins size={16} className="text-[#30d158]" />
           <span className="text-[13px] font-medium text-white/90 group-hover:text-white">Create an idle tycoon<br/>game with plots</span>
         </button>
-        <button onClick={() => setInput("Make a simulator game with pet hatching and eggs")} className="bg-transparent border border-[#2a2a2a] hover:border-white/20 transition-colors p-3 rounded-2xl flex flex-col items-start gap-3 text-left group">
+        <button onClick={() => handleCardClick("Make a simulator game with pet hatching and eggs")} className="card bg-transparent border border-[#2a2a2a] hover:border-white/25 transition-colors p-3 rounded-2xl flex flex-col items-start gap-3 text-left group">
           <Sparkles size={16} className="text-[#bf5af2]" />
           <span className="text-[13px] font-medium text-white/90 group-hover:text-white">Make a simulator with<br/>pet hatching</span>
         </button>
-        <button onClick={() => setInput("Design a PvP sword fighting arena with leaderstats")} className="bg-transparent border border-[#2a2a2a] hover:border-white/20 transition-colors p-3 rounded-2xl flex flex-col items-start gap-3 text-left group">
+        <button onClick={() => handleCardClick("Design a PvP sword fighting arena with leaderstats")} className="card bg-transparent border border-[#2a2a2a] hover:border-white/25 transition-colors p-3 rounded-2xl flex flex-col items-start gap-3 text-left group">
           <Sword size={16} className="text-[#0a84ff]" />
           <span className="text-[13px] font-medium text-white/90 group-hover:text-white">Design a PvP sword<br/>fighting arena</span>
         </button>
@@ -131,8 +188,8 @@ export function HomeLayout({
       {/* Input Box Area */}
       <div className="w-full max-w-4xl relative mt-12" ref={dropdownRef}>
         
-        {/* Project Selector Tab (Wide Background) */}
-        <div className="absolute -top-[51px] left-2 right-2 bg-[#1f1f1f] rounded-t-2xl pt-3.5 px-4 pb-5 flex items-center justify-between z-0 shadow-lg">
+        {/* Project Selector Tab (Wide Background) - positioned under input box with top corners only */}
+        <div data-squircle data-squircle-radius="24" data-squircle-smoothing="1" className="absolute -top-[51px] left-2 right-2 bg-[#1f1f1f] pt-3.5 px-4 pb-5 flex items-center justify-between shadow-lg squircle-top">
           <button 
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             className="flex items-center gap-1.5 text-[13px] font-medium text-white/80 hover:text-white transition-colors"
@@ -142,19 +199,86 @@ export function HomeLayout({
             <ChevronDown size={14} className="text-white/40 ml-0.5" />
           </button>
 
-          <button
-            onClick={() => {
-              window.dispatchEvent(new CustomEvent('open-connect-modal'));
-            }}
-            className="flex items-center gap-1.5 text-[13px] font-medium text-white/80 hover:text-white transition-colors bg-white/5 hover:bg-white/10 px-3 py-1 rounded-lg"
-          >
-            <Cloud size={14} className="text-white/60" />
-            Connect
-          </button>
+          <div className="relative" ref={connectDropdownRef}>
+            <button
+              onClick={() => setIsConnectDropdownOpen(!isConnectDropdownOpen)}
+              className="flex items-center gap-1.5 text-[13px] font-medium text-white/80 hover:text-white transition-colors bg-white/5 hover:bg-white/10 px-3 py-1 rounded-lg"
+            >
+              <Cloud size={14} className="text-white/60" />
+              Connect
+            </button>
+
+            {isConnectDropdownOpen && (
+              <div className="card absolute top-full right-0 mt-2 w-72 bg-[#2a2a2a]/95 backdrop-blur-xl rounded-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150 shadow-2xl border border-white/5">
+                <div className="text-[10px] text-neutral-400 uppercase tracking-widest font-bold mb-2 flex items-center justify-between">
+                  <span>Roblox PIN</span>
+                  {selectedProject && (
+                    <button
+                      onClick={() => {
+                        setIsConnectDropdownOpen(false);
+                        window.dispatchEvent(new CustomEvent('regenerate-code'));
+                      }}
+                      className="flex items-center gap-1 text-[11px] text-neutral-300 hover:text-white bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded-md transition-colors"
+                      title="Regenerate Code & PIN"
+                    >
+                      <RefreshCw size={11} /> Regenerate Code
+                    </button>
+                  )}
+                </div>
+                {selectedProject ? (
+                  <>
+                    <div className="flex items-center justify-between bg-[#1a1a1a] p-2.5 rounded-xl">
+                      <span className="font-mono font-bold text-base tracking-[0.1em] text-white select-all pl-1">
+                        {selectedProject.pin}
+                      </span>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(selectedProject.pin);
+                          setIsPinCopied(true);
+                          setTimeout(() => setIsPinCopied(false), 2000);
+                        }}
+                        className="p-2 hover:bg-white/10 rounded-lg text-neutral-400 hover:text-white transition-colors"
+                        title="Copy PIN"
+                      >
+                        {isPinCopied ? <Check size={14} className="text-white" /> : <Copy size={14} />}
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-neutral-400 mt-2.5 leading-normal">
+                      Enter this PIN in the VibeCoder Roblox Studio plugin to sync.
+                    </p>
+                    <div className="mt-3 pt-3 border-t border-white/5">
+                      <button
+                        onClick={() => {
+                          setIsConnectDropdownOpen(false);
+                          downloadPluginLuaScript(selectedProject.pin);
+                        }}
+                        className="w-full py-2 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Download size={13} /> Install Plugin
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-3">
+                    <p className="text-xs text-neutral-400 mb-3">Please choose or create a project first to view your connection PIN.</p>
+                    <button
+                      onClick={() => {
+                        setIsConnectDropdownOpen(false);
+                        setIsDropdownOpen(true);
+                      }}
+                      className="w-full py-2 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold rounded-xl transition-colors"
+                    >
+                      Choose Project
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* The Input Box */}
-        <div data-squircle data-squircle-radius="24" data-squircle-smoothing="1" className="w-full bg-[#2a2a2a] rounded-2xl p-4 flex flex-col min-h-[120px] shadow-lg relative z-10">
+        <div data-squircle data-squircle-radius="24" data-squircle-smoothing="1" className="card w-full bg-[#2a2a2a] rounded-2xl p-4 flex flex-col min-h-[120px] shadow-lg relative z-10">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -397,6 +521,47 @@ export function HomeLayout({
                 Create project
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Please Connect Modal */}
+      {isPleaseConnectModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4 animate-in fade-in duration-200">
+          <div className="bg-[#1f1f1f] border border-[#2a2a2a] rounded-2xl p-6 w-full max-w-md shadow-2xl relative text-center">
+            <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 text-white">
+              <Cloud size={24} />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2">Please Connect to Roblox Studio</h3>
+            <p className="text-sm text-neutral-400 mb-6">
+              You must choose a project and connect your workspace before you can start prompting AI-generated scripts.
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  setIsPleaseConnectModalOpen(false);
+                  setIsDropdownOpen(true);
+                }}
+                className="flex-1 py-2.5 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold rounded-xl transition-colors"
+              >
+                Choose Project
+              </button>
+              <button
+                onClick={() => {
+                  setIsPleaseConnectModalOpen(false);
+                  setIsConnectDropdownOpen(true);
+                }}
+                className="flex-1 py-2.5 bg-white text-black hover:bg-neutral-200 text-xs font-bold rounded-xl transition-colors"
+              >
+                Connect Now
+              </button>
+            </div>
+            <button
+              onClick={() => setIsPleaseConnectModalOpen(false)}
+              className="absolute top-4 right-4 text-neutral-400 hover:text-white"
+            >
+              <X size={18} />
+            </button>
           </div>
         </div>
       )}

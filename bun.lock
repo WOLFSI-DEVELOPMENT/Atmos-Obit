@@ -25,6 +25,7 @@
         "express": "^4.21.2",
         "ffmpeg-static": "^5.3.0",
         "file-saver": "^2.0.5",
+        "hyperellipse": "^1.0.5",
         "jsonwebtoken": "^9.0.3",
         "jszip": "^3.10.1",
         "lucide-react": "^0.546.0",
@@ -637,6 +638,8 @@
     "http-response-object": ["http-response-object@3.0.2", "", { "dependencies": { "@types/node": "^10.0.3" } }, "sha512-bqX0XTF6fnXSQcEJ2Iuyr75yVakyjIDCqroJQ/aHfSdlM743Cwqoi2nDYMzLGWUcuTWGWy8AAvOKXTfiv6q9RA=="],
 
     "https-proxy-agent": ["https-proxy-agent@5.0.1", "", { "dependencies": { "agent-base": "6", "debug": "4" } }, "sha512-dFcAjpTQFgoLMzC2VwU+C/CbS7uRL0lWmxDITmqm7C+7F0Odmj6s9l6alZc6AELXhrnggM2CeWSXHGOdX2YtwA=="],
+
+    "hyperellipse": ["hyperellipse@1.0.5", "", {}, "sha512-kXHjOE7xShPPfD5wT6bTSxyuzspBmsTXnzN4rxZm3eIbRHWW2OIAc/TCCfIiJ9fAqppmi8uIQDi2OHDU3mzO7g=="],
 
     "iconv-lite": ["iconv-lite@0.4.24", "", { "dependencies": { "safer-buffer": ">= 2.1.2 < 3" } }, "sha512-v3MXnZAcvnywkTUEZomIActle7RXXeedOR31wwl7VlyoXO4Qi9arvSenNQWne1TcRwhCL1HwLI21bEqdpj8/rA=="],
 

@@ -77,7 +77,7 @@ export function LandingPage({ onEnterApp, onNavigate }: LandingPageProps) {
         <nav className="relative z-50 flex items-center justify-between px-8 py-6 max-w-7xl mx-auto w-full">
           <div className="flex items-center gap-3">
             <div className="w-[34px] h-[34px] rounded-[32px] [corner-shape:squircle] flex items-center justify-center relative overflow-hidden bg-transparent">
-              <img src="https://res.cloudinary.com/dwthgcx5j/image/upload/v1787020978/rounded-image_1_q5ruom.png" alt="App Icon" className="w-full h-full object-cover" />
+              <img src="https://res.cloudinary.com/dwthgcx5j/image/upload/v1787673321/squircle-n4_abdl5u.png" alt="App Icon" className="w-full h-full object-cover" />
             </div>
             <span className="font-bold text-[18px] text-white tracking-tight whitespace-nowrap">Atmos orbit</span>
           </div>
@@ -564,7 +564,7 @@ export function LandingPage({ onEnterApp, onNavigate }: LandingPageProps) {
             
             <div className="col-span-1 md:col-span-2 flex items-start gap-3 text-white">
               <div className="w-[34px] h-[34px] rounded-[32px] [corner-shape:squircle] flex items-center justify-center relative overflow-hidden bg-transparent">
-                <img src="https://res.cloudinary.com/dwthgcx5j/image/upload/v1787020978/rounded-image_1_q5ruom.png" alt="App Icon" className="w-full h-full object-cover" />
+                <img src="https://res.cloudinary.com/dwthgcx5j/image/upload/v1787673321/squircle-n4_abdl5u.png" alt="App Icon" className="w-full h-full object-cover" />
               </div>
               <span className="font-bold text-[22px] tracking-tight whitespace-nowrap">Atmos orbit</span>
             </div>
