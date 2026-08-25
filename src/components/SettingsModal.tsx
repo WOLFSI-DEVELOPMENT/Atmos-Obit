@@ -1200,7 +1200,7 @@ export function SettingsModal({ isOpen, onClose, user, onLogout, selectedModel, 
                   className="p-8 max-w-xl mx-auto space-y-6"
                 >
                   {/* Hero Banner */}
-                  <div className="bg-[#242426] border border-white/10 rounded-3xl [corner-shape:superellipse(1.82)] p-6 space-y-3 relative overflow-hidden">
+                  <div className="bg-[#1a1a1c] rounded-3xl p-6 space-y-3 relative overflow-hidden">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
@@ -1208,7 +1208,7 @@ export function SettingsModal({ isOpen, onClose, user, onLogout, selectedModel, 
                         </div>
                         <span className="text-xs font-semibold text-white/90 uppercase tracking-wider">Major Release</span>
                       </div>
-                      <span className="text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                      <span className="text-[11px] font-medium bg-emerald-500/10 text-emerald-400 px-2.5 py-0.5 rounded-full">
                         v1.5 Around the Corner
                       </span>
                     </div>
@@ -1226,10 +1226,10 @@ export function SettingsModal({ isOpen, onClose, user, onLogout, selectedModel, 
                     <h4 className="text-[13px] text-[#8e8e93] uppercase font-medium pl-1">Upcoming in v1.5</h4>
 
                     {/* 1. One-Prompt Full Game Synthesis */}
-                    <div className="bg-[#2c2c2e] rounded-2xl p-4 border border-white/5 space-y-2">
+                    <div className="bg-[#1a1a1c] rounded-2xl p-4 space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                          <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
                             <Zap size={16} className="text-amber-400" />
                           </div>
                           <div>
@@ -1247,10 +1247,10 @@ export function SettingsModal({ isOpen, onClose, user, onLogout, selectedModel, 
                     </div>
 
                     {/* 2. Plan Mode */}
-                    <div className="bg-[#2c2c2e] rounded-2xl p-4 border border-white/5 space-y-2">
+                    <div className="bg-[#1a1a1c] rounded-2xl p-4 space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+                          <div className="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
                             <Compass size={16} className="text-blue-400" />
                           </div>
                           <div>
@@ -1258,7 +1258,7 @@ export function SettingsModal({ isOpen, onClose, user, onLogout, selectedModel, 
                             <p className="text-[#8e8e93] text-[11px]">Iterate design before coding</p>
                           </div>
                         </div>
-                        <span className="text-[10px] font-medium bg-blue-500/10 text-blue-300 border border-blue-500/20 px-2 py-0.5 rounded-md">
+                        <span className="text-[10px] font-medium bg-blue-500/10 text-blue-300 px-2 py-0.5 rounded-md">
                           New Workflow
                         </span>
                       </div>
@@ -1268,10 +1268,10 @@ export function SettingsModal({ isOpen, onClose, user, onLogout, selectedModel, 
                     </div>
 
                     {/* 3. AI VFX & Particle Systems */}
-                    <div className="bg-[#2c2c2e] rounded-2xl p-4 border border-white/5 space-y-2">
+                    <div className="bg-[#1a1a1c] rounded-2xl p-4 space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
+                          <div className="w-8 h-8 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0">
                             <Sparkles size={16} className="text-purple-400" />
                           </div>
                           <div>
@@ -1289,10 +1289,10 @@ export function SettingsModal({ isOpen, onClose, user, onLogout, selectedModel, 
                     </div>
 
                     {/* 4. 3D Model & Mesh Creation */}
-                    <div className="bg-[#2c2c2e] rounded-2xl p-4 border border-white/5 space-y-2">
+                    <div className="bg-[#1a1a1c] rounded-2xl p-4 space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                          <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
                             <Box size={16} className="text-emerald-400" />
                           </div>
                           <div>
@@ -1310,10 +1310,10 @@ export function SettingsModal({ isOpen, onClose, user, onLogout, selectedModel, 
                     </div>
 
                     {/* 5. Music & Ambient Soundscapes */}
-                    <div className="bg-[#2c2c2e] rounded-2xl p-4 border border-white/5 space-y-2">
+                    <div className="bg-[#1a1a1c] rounded-2xl p-4 space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center shrink-0">
+                          <div className="w-8 h-8 rounded-xl bg-pink-500/10 flex items-center justify-center shrink-0">
                             <Music size={16} className="text-pink-400" />
                           </div>
                           <div>
@@ -1331,10 +1331,10 @@ export function SettingsModal({ isOpen, onClose, user, onLogout, selectedModel, 
                     </div>
 
                     {/* 6. Upgraded 3D Engine Preview */}
-                    <div className="bg-[#2c2c2e] rounded-2xl p-4 border border-white/5 space-y-2">
+                    <div className="bg-[#1a1a1c] rounded-2xl p-4 space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                          <div className="w-8 h-8 rounded-xl bg-cyan-500/10 flex items-center justify-center shrink-0">
                             <Eye size={16} className="text-cyan-400" />
                           </div>
                           <div>
@@ -1342,7 +1342,7 @@ export function SettingsModal({ isOpen, onClose, user, onLogout, selectedModel, 
                             <p className="text-[#8e8e93] text-[11px]">WebGL & WebGPU physics viewport</p>
                           </div>
                         </div>
-                        <span className="text-[10px] font-medium bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 px-2 py-0.5 rounded-md">
+                        <span className="text-[10px] font-medium bg-cyan-500/10 text-cyan-300 px-2 py-0.5 rounded-md">
                           Enhanced
                         </span>
                       </div>
@@ -1352,7 +1352,7 @@ export function SettingsModal({ isOpen, onClose, user, onLogout, selectedModel, 
                     </div>
 
                     {/* 7. Additional Highlights */}
-                    <div className="bg-[#2c2c2e] rounded-2xl p-4 border border-white/5 space-y-3">
+                    <div className="bg-[#1a1a1c] rounded-2xl p-4 space-y-3">
                       <h4 className="text-xs font-semibold text-white/90 uppercase tracking-wider">Also Shipping in v1.5</h4>
                       <div className="grid grid-cols-1 gap-2.5 text-xs text-[#a0a0a0]">
                         <div className="flex items-start gap-2">
