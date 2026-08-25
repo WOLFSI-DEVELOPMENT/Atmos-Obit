@@ -22,7 +22,8 @@ import {
   Trash2,
   ArrowUpRight,
   CornerDownRight,
-  MoreVertical
+  MoreVertical,
+  RefreshCw
 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { Project, Message, GEMINI_MODELS, OPENAI_MODELS, ANTHROPIC_MODELS } from '../types';
@@ -31,6 +32,7 @@ interface ChatPanelProps {
   project: Project;
   onMessagesChange: (messages: Message[]) => void;
   onFilesUpdate?: (files: { path: string; type: string; content: string }[]) => void;
+  onPinUpdate?: (pin: string) => void;
   selectedModel: string;
   setSelectedModel: (model: string) => void;
   artifactsEnabled?: boolean;
@@ -113,6 +115,7 @@ export default function ChatPanel({
   project, 
   onMessagesChange,
   onFilesUpdate,
+  onPinUpdate,
   selectedModel,
   setSelectedModel,
   artifactsEnabled,
@@ -439,12 +442,28 @@ end
 
   
   useEffect(() => {
-    const handleRegenerate = () => {
-      handleSend("Regenerate the code based on my previous instructions");
+    const handleRegenerate = async () => {
+      try {
+        const res = await fetch('/api/sync/create', { method: 'POST' });
+        if (res.ok) {
+          const data = await res.json();
+          const newPin = data.pin;
+          if (onPinUpdate) {
+            onPinUpdate(newPin);
+          }
+          const newMsg = {
+            role: 'model' as const,
+            content: `🔄 **Connection Code Regenerated!**\n\nYour new session PIN is \`${newPin}\`.\n\nTo connect this workspace directly to Roblox Studio:\n1. Open your game in Roblox Studio.\n2. Open the **VibeCoder plugin**.\n3. Enter the new PIN \`${newPin}\` and click Connect.`
+          };
+          onMessagesChange([...project.messages, newMsg]);
+        }
+      } catch (e) {
+        handleSend("Regenerate the connection code and session PIN instructions for Roblox Studio");
+      }
     };
     window.addEventListener('regenerate-code', handleRegenerate);
     return () => window.removeEventListener('regenerate-code', handleRegenerate);
-  }, [input, isLoading, project.messages]);
+  }, [project.messages, onMessagesChange, onPinUpdate]);
 
   return (
     <div className="flex-1 bg-[#181818] flex flex-col h-full rounded-none relative">
@@ -468,9 +487,19 @@ end
           </button>
 
           {isPinDropdownOpen && (
-            <div className="absolute top-full left-0 mt-2 w-64 bg-[#2a2a2a]/90 backdrop-blur-xl rounded-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150 shadow-2xl border border-white/5">
-              <div className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold mb-2">
-                Roblox PIN
+            <div className="absolute top-full left-0 mt-2 w-72 bg-[#2a2a2a]/95 backdrop-blur-xl rounded-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150 shadow-2xl border border-white/5">
+              <div className="text-[10px] text-neutral-400 uppercase tracking-widest font-bold mb-2 flex items-center justify-between">
+                <span>Roblox PIN</span>
+                <button
+                  onClick={() => {
+                    setIsPinDropdownOpen(false);
+                    window.dispatchEvent(new CustomEvent('regenerate-code'));
+                  }}
+                  className="flex items-center gap-1 text-[11px] text-neutral-300 hover:text-white bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded-md transition-colors"
+                  title="Regenerate Connection Code & PIN"
+                >
+                  <RefreshCw size={11} /> Regenerate Code
+                </button>
               </div>
               <div className="flex items-center justify-between bg-[#1a1a1a] p-2.5 rounded-xl">
                 <span className="font-mono font-bold text-base tracking-[0.1em] text-white select-all pl-1">
@@ -484,9 +513,20 @@ end
                   {isPinCopied ? <Check size={14} className="text-white" /> : <Copy size={14} />}
                 </button>
               </div>
-              <p className="text-[10px] text-neutral-500 mt-2.5 leading-normal">
+              <p className="text-[10px] text-neutral-400 mt-2.5 leading-normal">
                 Enter this PIN in the VibeCoder Roblox Studio plugin to sync.
               </p>
+              <div className="mt-3 pt-3 border-t border-white/5">
+                <button
+                  onClick={() => {
+                    setIsPinDropdownOpen(false);
+                    downloadPluginLuaScript();
+                  }}
+                  className="w-full py-2 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
+                >
+                  <Download size={13} /> Install Plugin
+                </button>
+              </div>
             </div>
           )}
         </div>

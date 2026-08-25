@@ -132,7 +132,7 @@ export function HomeLayout({
       <div className="w-full max-w-4xl relative mt-12" ref={dropdownRef}>
         
         {/* Project Selector Tab (Wide Background) */}
-        <div className="absolute -top-11 left-2 right-2 bg-[#1f1f1f] rounded-t-2xl pt-3.5 px-4 pb-5 flex items-start gap-6 z-0 shadow-lg">
+        <div className="absolute -top-[51px] left-2 right-2 bg-[#1f1f1f] rounded-t-2xl pt-3.5 px-4 pb-5 flex items-center justify-between z-0 shadow-lg">
           <button 
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             className="flex items-center gap-1.5 text-[13px] font-medium text-white/80 hover:text-white transition-colors"
@@ -140,6 +140,16 @@ export function HomeLayout({
             <Folder size={14} className="text-white/60 mr-0.5" />
             {selectedProject ? `Change project | ${selectedProject.name}` : 'Choose project'}
             <ChevronDown size={14} className="text-white/40 ml-0.5" />
+          </button>
+
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('open-connect-modal'));
+            }}
+            className="flex items-center gap-1.5 text-[13px] font-medium text-white/80 hover:text-white transition-colors bg-white/5 hover:bg-white/10 px-3 py-1 rounded-lg"
+          >
+            <Cloud size={14} className="text-white/60" />
+            Connect
           </button>
         </div>
 

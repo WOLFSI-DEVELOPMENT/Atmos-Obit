@@ -95,6 +95,15 @@ export default function App() {
       .catch(() => setSession(null))
       .finally(() => setIsPending(false));
   }, []);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(() => {
+    const path = window.location.pathname;
+    if (path.startsWith('/chat/')) {
+      const parts = path.split('/');
+      if (parts[2]) return parts[2];
+    }
+    return localStorage.getItem('vibecoder_active_project_id') || null;
+  });
+
   const [projects, setProjects] = useState<Project[]>(() => {
     const saved = localStorage.getItem('vibecoder_projects');
     return saved ? JSON.parse(saved) : [];
@@ -102,7 +111,7 @@ export default function App() {
   
   const [view, setView] = useState<'landing' | 'app' | 'privacy' | 'terms' | 'blog' | 'pricing' | 'auth' | 'articles'>(() => {
     const path = window.location.pathname;
-    if (path === '/app') return 'app';
+    if (path === '/app' || path.startsWith('/chat/')) return 'app';
     if (path === '/privacy') return 'privacy';
     if (path === '/terms') return 'terms';
     if (path === '/blog') return 'blog';
@@ -114,6 +123,9 @@ export default function App() {
 
   const handleNavigate = (newView: typeof view) => {
     setView(newView);
+    if (newView === 'app') {
+      setActiveProjectId(null);
+    }
     const path = newView === 'landing' ? '/' : `/${newView}`;
     if (window.location.pathname !== path) {
       window.history.pushState({}, '', path);
@@ -121,23 +133,49 @@ export default function App() {
   };
 
   useEffect(() => {
+    let path = '/';
+    if (view === 'app') {
+      path = activeProjectId ? `/chat/${activeProjectId}` : '/app';
+    } else if (view !== 'landing') {
+      path = `/${view}`;
+    }
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+    }
+  }, [view, activeProjectId]);
+
+  useEffect(() => {
+    const handleOpenConnect = () => {
+      setIsConnectModalOpen(true);
+    };
+    window.addEventListener('open-connect-modal', handleOpenConnect);
+    return () => window.removeEventListener('open-connect-modal', handleOpenConnect);
+  }, []);
+
+  useEffect(() => {
     const handlePopState = () => {
       const path = window.location.pathname;
-      if (path === '/app') handleNavigate('app');
+      if (path.startsWith('/chat/')) {
+        const parts = path.split('/');
+        if (parts[2]) {
+          setActiveProjectId(parts[2]);
+        }
+        setView('app');
+      } else if (path === '/app') {
+        setActiveProjectId(null);
+        setView('app');
+      }
       else if (path === '/privacy') setView('privacy');
       else if (path === '/terms') setView('terms');
       else if (path === '/blog') setView('blog');
       else if (path === '/articles') setView('articles');
       else if (path === '/pricing') setView('pricing');
-      else if (path === '/auth') handleNavigate('auth');
+      else if (path === '/auth') setView('auth');
       else setView('landing');
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(() => {
-    return localStorage.getItem('vibecoder_active_project_id') || null;
-  });
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
@@ -702,7 +740,7 @@ export default function App() {
       </div>
 
       {/* Main Page Area - Full bleed, no padding/curves */}
-      <div className="flex-1 bg-black h-full flex flex-col relative overflow-hidden">
+      <div className="flex-1 bg-[#181818] h-full flex flex-col relative overflow-hidden">
 
           {/* Floating Open Sidebar Button (visible when sidebar is closed) */}
           {!isSidebarOpen && (
@@ -742,6 +780,10 @@ export default function App() {
                 project={activeProject}
                 onMessagesChange={handleSendMessage}
                 onFilesUpdate={handleUpdateProjectFiles}
+                onPinUpdate={(newPin) => {
+                  setProjects(prev => prev.map(p => p.id === activeProjectId ? { ...p, pin: newPin } : p));
+                  startPolling(newPin, activeProjectId);
+                }}
                 selectedModel={selectedModel}
                 setSelectedModel={setSelectedModel}
                 artifactsEnabled={artifactsEnabled}
