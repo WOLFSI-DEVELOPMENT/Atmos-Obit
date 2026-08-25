@@ -318,6 +318,7 @@ export default function ChatPanel({
       const responseTone = localStorage.getItem('vibecoder_response_tone') || 'default';
       const guiStyle = localStorage.getItem('vibecoder_gui_style') || 'default';
       const orchestratorEnabled = localStorage.getItem('vibecoder_orchestrator_enabled') !== 'false';
+      const guiCreationEnabled = localStorage.getItem('vibecoder_exp_gui_creation') === 'true';
 
       const res = await fetch('/api/chat', {
         method: 'POST',
@@ -335,7 +336,8 @@ export default function ChatPanel({
           assetPreference,
           responseTone,
           guiStyle,
-          orchestratorEnabled
+          orchestratorEnabled,
+          guiCreationEnabled
         }),
         signal: abortControllerRef.current?.signal
       });
@@ -432,6 +434,15 @@ end
       reader.readAsDataURL(file);
     }
   };
+
+  
+  useEffect(() => {
+    const handleRegenerate = () => {
+      handleSend("Regenerate the code based on my previous instructions");
+    };
+    window.addEventListener('regenerate-code', handleRegenerate);
+    return () => window.removeEventListener('regenerate-code', handleRegenerate);
+  }, [input, isLoading, project.messages]);
 
   return (
     <div className="flex-1 bg-black flex flex-col h-full rounded-none relative">

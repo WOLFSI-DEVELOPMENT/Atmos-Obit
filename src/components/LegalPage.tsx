@@ -14,7 +14,7 @@ interface LegalPageProps {
   readingTime: string;
   intro: React.ReactNode;
   sections: LegalSection[];
-  onNavigate: (view: 'landing' | 'app' | 'privacy' | 'terms' | 'blog' | 'pricing' | 'auth') => void;
+  onNavigate: (view: 'landing' | 'app' | 'privacy' | 'terms' | 'blog' | 'pricing' | 'auth' | 'articles') => void;
 }
 
 export function LegalPage({ title, lastUpdated, readingTime, intro, sections, onNavigate }: LegalPageProps) {

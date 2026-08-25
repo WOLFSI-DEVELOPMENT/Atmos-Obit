@@ -219,7 +219,7 @@ app.post('/api/plugin/state', async (req, res) => {
 
 // 5. Web App: Send Chat to AI and Queue Code
 app.post('/api/chat', async (req, res) => {
-  const { message, pin, image, model, apiKey, baseUrl, thinkingConfig, allowToolbox, allowIconGen, assetPreference, responseTone, guiStyle, orchestratorEnabled } = req.body;
+  const { message, pin, image, model, apiKey, baseUrl, thinkingConfig, allowToolbox, allowIconGen, assetPreference, responseTone, guiStyle, orchestratorEnabled, guiCreationEnabled } = req.body;
   
   try {
     const session = pin ? await getSession(pin) : null;
@@ -302,10 +302,20 @@ Output ONLY the exact model ID from the options above. Nothing else.`,
       }
     }
 
-    const behaviorInstructions = [toneInstruction, styleInstruction].filter(Boolean).map(i => `\n\nCRITICAL PREFERENCE: ${i}`).join('');
+    const behaviorInstructions = [toneInstruction, styleInstruction].filter(Boolean).map(i => `
+
+CRITICAL PREFERENCE: ${i}`).join('');
+
+    let guiInstruction = '';
+    if (guiCreationEnabled) {
+      guiInstruction = `
+
+CRITICAL PREFERENCE: You have access to "GUI Creation v1". You are encouraged to create the best, fully functional GUI possible. You can even build entire games out of pure GUI (e.g., clicker games, idle games, menu-based RPGs). When generating UI, use modern, aesthetic, responsive practices in Roblox. Use UIListLayout, UICorner, UIPadding, gradients, and proper scaling. Your primary tool for this is outputting "Command" objects that generate these ScreenGuis and LocalScripts inside StarterGui.`;
+    }
+
 
     const systemInstruction = `You are VibeCoder, an expert Roblox Luau AI coding assistant.${gameStateContext}
-You have full remote control over the user's Roblox Studio environment. You can write scripts, manipulate the 3D world, change game settings, and fetch assets directly from the Toolbox (Creator Marketplace).${assetInstruction}${behaviorInstructions}
+You have full remote control over the user's Roblox Studio environment. You can write scripts, manipulate the 3D world, change game settings, and fetch assets directly from the Toolbox (Creator Marketplace).${assetInstruction}${behaviorInstructions}${guiInstruction}
 
 Capabilities:
 
@@ -338,7 +348,9 @@ Format:
   { "type": "Asset", "query": "epic sword", "assetType": "Model" }
 ]
 }
-DO NOT use markdown code blocks for the code. Only output the JSON.`;
+DO NOT use markdown code blocks for the code. Only output the JSON.
+
+CRITICAL: If the user request is purely conversational (e.g. "hello", "who are you"), provide a friendly response in "explanation" and leave "edits" empty []. Do NOT build a game or execute commands unless explicitly asked.`;
 
     
     let reply = '';
@@ -707,7 +719,7 @@ app.get('/api/auth/me', async (req, res) => {
   
 
 app.post('/api/auth/logout', (req, res) => {
-  res.clearCookie('auth_token');
+  res.clearCookie('auth_token', { httpOnly: true, secure: true, sameSite: 'none' });
   res.json({ success: true });
 });
 

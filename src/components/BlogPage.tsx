@@ -3,7 +3,7 @@ import { ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface BlogPageProps {
-  onNavigate: (view: 'landing' | 'app' | 'privacy' | 'terms' | 'blog' | 'pricing' | 'auth') => void;
+  onNavigate: (view: 'landing' | 'app' | 'privacy' | 'terms' | 'blog' | 'pricing' | 'auth' | 'articles') => void;
 }
 
 export function BlogPage({ onNavigate }: BlogPageProps) {

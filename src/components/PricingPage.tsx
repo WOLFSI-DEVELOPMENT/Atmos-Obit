@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ChevronRight, Check, Tag, Zap } from 'lucide-react';
 
 interface PricingPageProps {
-  onNavigate: (view: 'landing' | 'app' | 'privacy' | 'terms' | 'blog' | 'pricing' | 'auth') => void;
+  onNavigate: (view: 'landing' | 'app' | 'privacy' | 'terms' | 'blog' | 'pricing' | 'auth' | 'articles') => void;
 }
 
 export function PricingPage({ onNavigate }: PricingPageProps) {

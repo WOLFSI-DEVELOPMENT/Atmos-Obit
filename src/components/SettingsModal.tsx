@@ -106,6 +106,7 @@ export function SettingsModal({ isOpen, onClose, user, onLogout, selectedModel, 
   const [newCustomModelApiKey, setNewCustomModelApiKey] = useState('');
   const [orchestratorEnabled, setOrchestratorEnabled] = useState(true);
   const [artifactsEnabled, setArtifactsEnabled] = useState(false);
+  const [guiCreationEnabled, setGuiCreationEnabled] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -122,6 +123,7 @@ export function SettingsModal({ isOpen, onClose, user, onLogout, selectedModel, 
       setAiFontFamily(localStorage.getItem('vibecoder_ai_font') || 'default');
       setOrchestratorEnabled(localStorage.getItem('vibecoder_orchestrator_enabled') !== 'false');
       setArtifactsEnabled(localStorage.getItem('vibecoder_exp_artifacts') === 'true');
+      setGuiCreationEnabled(localStorage.getItem('vibecoder_exp_gui_creation') === 'true');
       try {
         const levels = JSON.parse(localStorage.getItem('vibecoder_thinking_levels') || '{}');
         setThinkingLevels(levels);
@@ -244,6 +246,11 @@ export function SettingsModal({ isOpen, onClose, user, onLogout, selectedModel, 
     const newVal = !artifactsEnabled;
     setArtifactsEnabled(newVal);
     localStorage.setItem('vibecoder_exp_artifacts', newVal.toString());
+  };
+  const handleToggleGuiCreation = () => {
+    const newVal = !guiCreationEnabled;
+    setGuiCreationEnabled(newVal);
+    localStorage.setItem('vibecoder_exp_gui_creation', newVal.toString());
   };
 
   const handleToggleWikimediaExperiment = () => {
@@ -1062,6 +1069,20 @@ export function SettingsModal({ isOpen, onClose, user, onLogout, selectedModel, 
                     </div>
                   </div>
 
+                                    <div className="bg-[#2c2c2e] rounded-3xl [corner-shape:superellipse(1.82)] p-4 space-y-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h3 className="text-white font-medium mb-1">GUI Creation v1</h3>
+                        <p className="text-[#8e8e93] text-xs">Allow VibeCoder to create fully functional, best-in-class GUI-based games directly.</p>
+                      </div>
+                      <button 
+                        onClick={handleToggleGuiCreation}
+                        className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${guiCreationEnabled ? 'bg-[#0a84ff]' : 'bg-[#3a3a3c]'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${guiCreationEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                      </button>
+                    </div>
+                  </div>
                   <div className="bg-[#2c2c2e] rounded-3xl [corner-shape:superellipse(1.82)] p-4 space-y-4">
                     <div className="flex items-start justify-between gap-4">
                       <div>

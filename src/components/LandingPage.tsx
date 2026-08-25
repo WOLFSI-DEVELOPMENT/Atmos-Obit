@@ -4,7 +4,7 @@ import { motion, useScroll, useTransform, AnimatePresence } from 'motion/react';
 
 interface LandingPageProps {
   onEnterApp: () => void;
-  onNavigate?: (view: 'landing' | 'app' | 'privacy' | 'terms' | 'blog' | 'pricing' | 'auth') => void;
+  onNavigate?: (view: 'landing' | 'app' | 'privacy' | 'terms' | 'blog' | 'pricing' | 'auth' | 'articles') => void;
 }
 
 const PROMPTS = [
@@ -84,6 +84,7 @@ export function LandingPage({ onEnterApp, onNavigate }: LandingPageProps) {
           
           <div className="hidden md:flex items-center gap-6">
             <button onClick={() => onNavigate?.('blog')} className="text-white/70 hover:text-white font-medium transition-colors">Blog</button>
+            <button onClick={() => onNavigate?.('articles')} className="text-white/70 hover:text-white font-medium transition-colors">Articles</button>
             <button onClick={() => onNavigate?.('pricing')} className="text-white/70 hover:text-white font-medium transition-colors">Pricing</button>
             <div className="w-px h-4 bg-white/20"></div>
             <button onClick={() => onNavigate?.('auth')} className="text-white hover:text-white/80 font-medium transition-colors">Log in</button>

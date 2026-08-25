@@ -29,42 +29,39 @@ export function ArtifactsPanel({ project, onClose, onFilesUpdate }: ArtifactsPan
   const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
   const [isPlayMode, setIsPlayMode] = useState(false);
 
+  const fetchFiles = async () => {
+    if (!project.pin) return;
+    try {
+      const res = await fetch(`/api/sync/state/${project.pin}`);
+      if (res.ok) {
+        const data = await res.json();
+        setFiles(data.files || []);
+        if (data.files && onFilesUpdate) {
+           // only update if different length to avoid infinite loop
+           if (project.files?.length !== data.files.length) {
+              onFilesUpdate(data.files);
+           }
+        }
+        if (!selectedFileRef.current && data.files && data.files.length > 0) {
+          setSelectedFile(data.files[0]);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch files", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!project.pin) {
       setIsLoading(false);
       return;
     }
     
-    let isMounted = true;
-    const fetchFiles = async () => {
-      try {
-        const res = await fetch(`/api/sync/state/${project.pin}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (isMounted) {
-            setFiles(data.files || []);
-            if (data.files && onFilesUpdate) {
-               // only update if different length to avoid infinite loop
-               if (project.files?.length !== data.files.length) {
-                  onFilesUpdate(data.files);
-               }
-            }
-            if (!selectedFileRef.current && data.files && data.files.length > 0) {
-              setSelectedFile(data.files[0]);
-            }
-          }
-        }
-      } catch (e) {
-        console.error("Failed to fetch files", e);
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
-    
     fetchFiles();
     const interval = setInterval(fetchFiles, 3000);
     return () => {
-      isMounted = false;
       clearInterval(interval);
     };
   }, [project.pin]);
@@ -114,7 +111,7 @@ export function ArtifactsPanel({ project, onClose, onFilesUpdate }: ArtifactsPan
         <div className="flex items-center gap-1">
           {/* Browser-like controls */}
           <div className="flex items-center gap-1.5 mr-4 opacity-50 px-2">
-            <button className="hover:text-white transition-colors" title="Reload Preview">
+            <button onClick={() => window.dispatchEvent(new CustomEvent('regenerate-code'))} className="hover:text-white transition-colors" title="Regenerate Code">
               <RefreshCw size={14} className="ml-1 cursor-pointer" />
             </button>
           </div>
@@ -169,6 +166,9 @@ export function ArtifactsPanel({ project, onClose, onFilesUpdate }: ArtifactsPan
                    </button>
                    <button onClick={handleSyncChanges} className="w-full text-left px-4 py-2.5 text-sm text-neutral-300 hover:text-white hover:bg-white/10 flex items-center gap-2 transition-colors">
                      <RefreshCw size={14} /> Sync Changes
+                   </button>
+                   <button onClick={() => { setIsExportDropdownOpen(false); window.dispatchEvent(new CustomEvent('regenerate-code')); }} className="w-full text-left px-4 py-2.5 text-sm text-neutral-300 hover:text-white hover:bg-white/10 flex items-center gap-2 transition-colors">
+                     <RefreshCw size={14} /> Regenerate Code
                    </button>
                  </div>
                </>

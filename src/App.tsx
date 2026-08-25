@@ -37,6 +37,7 @@ import { LandingPage } from './components/LandingPage';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
 import { BlogPage } from './components/BlogPage';
+import { ArticlesPage } from './components/ArticlesPage';
 import { PricingPage } from './components/PricingPage';
 import { AuthPage } from './components/AuthPage';
 import { SettingsModal } from './components/SettingsModal';
@@ -78,7 +79,7 @@ export default function App() {
             if (data.data['vibecoder_send_btn_color']) setSendBtnColor(data.data['vibecoder_send_btn_color']);
             if (data.data['vibecoder_send_btn_3d']) setSendBtn3D(data.data['vibecoder_send_btn_3d'] === 'true');
           }
-          setView('app');
+          handleNavigate('app');
         } else {
           setSession(null);
         }
@@ -91,7 +92,41 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
   
-  const [view, setView] = useState<'landing' | 'app' | 'privacy' | 'terms' | 'blog' | 'pricing' | 'auth'>('landing');
+  const [view, setView] = useState<'landing' | 'app' | 'privacy' | 'terms' | 'blog' | 'pricing' | 'auth' | 'articles'>(() => {
+    const path = window.location.pathname;
+    if (path === '/app') return 'app';
+    if (path === '/privacy') return 'privacy';
+    if (path === '/terms') return 'terms';
+    if (path === '/blog') return 'blog';
+    if (path === '/articles') return 'articles';
+    if (path === '/pricing') return 'pricing';
+    if (path === '/auth') return 'auth';
+    return 'landing';
+  });
+
+  const handleNavigate = (newView: typeof view) => {
+    setView(newView);
+    const path = newView === 'landing' ? '/' : `/${newView}`;
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      if (path === '/app') handleNavigate('app');
+      else if (path === '/privacy') setView('privacy');
+      else if (path === '/terms') setView('terms');
+      else if (path === '/blog') setView('blog');
+      else if (path === '/articles') setView('articles');
+      else if (path === '/pricing') setView('pricing');
+      else if (path === '/auth') handleNavigate('auth');
+      else setView('landing');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(() => {
     return localStorage.getItem('vibecoder_active_project_id') || null;
   });
@@ -439,27 +474,31 @@ export default function App() {
   }
   
   if (view === 'auth') {
-    return <AuthPage onNavigate={setView} onLoginSuccess={(user) => setSession({ user })} />;
+    return <AuthPage onNavigate={handleNavigate} onLoginSuccess={(user) => setSession({ user })} />;
   }
 
   if (view === 'pricing') {
-    return <PricingPage onNavigate={setView} />;
+    return <PricingPage onNavigate={handleNavigate} />;
   }
 
   if (view === 'blog') {
-    return <BlogPage onNavigate={setView} />;
+    return <BlogPage onNavigate={handleNavigate} />;
+  }
+
+  if (view === 'articles') {
+    return <ArticlesPage onNavigate={handleNavigate} />;
   }
 
   if (view === 'privacy') {
-    return <PrivacyPolicy onNavigate={setView} />;
+    return <PrivacyPolicy onNavigate={handleNavigate} />;
   }
 
   if (view === 'terms') {
-    return <TermsOfService onNavigate={setView} />;
+    return <TermsOfService onNavigate={handleNavigate} />;
   }
 
   if (view === 'landing') {
-    return <LandingPage onNavigate={setView} onEnterApp={() => setView('auth')} />;
+    return <LandingPage onNavigate={handleNavigate} onEnterApp={() => handleNavigate('auth')} />;
   }
 
   return (
@@ -588,13 +627,13 @@ export default function App() {
           {!isPending && !session ? (
             <div className="flex items-center gap-2">
               <button 
-                onClick={() => setView('auth')}
+                onClick={() => handleNavigate('auth')}
                 className="flex-1 py-2 text-[13px] font-semibold text-white bg-transparent hover:bg-white/10 rounded-xl transition-colors border border-white/10"
               >
                 Sign In
               </button>
               <button 
-                onClick={() => setView('auth')}
+                onClick={() => handleNavigate('auth')}
                 className="flex-1 py-2 text-[13px] font-semibold text-black bg-white hover:bg-neutral-200 rounded-xl transition-colors"
               >
                 Sign Up
@@ -949,7 +988,7 @@ export default function App() {
             keysToRemove.forEach(k => localStorage.removeItem(k));
             setProjects([]);
             setActiveProjectId(null);
-            setView('auth');
+            handleNavigate('auth');
           }}
           selectedModel={selectedModel}
           onModelChange={setSelectedModel}

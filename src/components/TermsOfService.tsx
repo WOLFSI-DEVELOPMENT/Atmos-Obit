@@ -2,7 +2,7 @@ import React from 'react';
 import { LegalPage } from './LegalPage';
 
 interface Props {
-  onNavigate: (view: 'landing' | 'app' | 'privacy' | 'terms' | 'blog' | 'pricing' | 'auth') => void;
+  onNavigate: (view: 'landing' | 'app' | 'privacy' | 'terms' | 'blog' | 'pricing' | 'auth' | 'articles') => void;
 }
 
 export function TermsOfService({ onNavigate }: Props) {

@@ -3,7 +3,7 @@ import { ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface AuthPageProps {
-  onNavigate: (view: 'landing' | 'app' | 'privacy' | 'terms' | 'blog' | 'pricing' | 'auth') => void;
+  onNavigate: (view: 'landing' | 'app' | 'privacy' | 'terms' | 'blog' | 'pricing' | 'auth' | 'articles') => void;
   onLoginSuccess?: (user: any) => void;
 }
 
