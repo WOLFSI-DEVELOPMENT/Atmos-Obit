@@ -28,7 +28,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-change-in-productio
 interface Session {
   pin: string;
   status: 'waiting' | 'connected';
-  pendingCode: { id: string; code: string; type: 'Script' | 'LocalScript' | 'ModuleScript' | 'Command'; path?: string }[];
+  pendingCode: { id: string; code: string; type: 'Script' | 'LocalScript' | 'ModuleScript'; path?: string }[];
   gameState?: any;
   generatedFiles: { path: string; type: string; content: string; }[];
   lastActive: number;
@@ -357,7 +357,7 @@ app.post('/api/chat', async (req, res) => {
 
     let assetInstruction = '';
     if (assetPreference === 'custom') {
-      assetInstruction = `\n\nCRITICAL ASSET PREFERENCE: The user has requested CUSTOM PARTS. You must NOT use the Toolbox to fetch pre-made models. Instead, you MUST build structures, objects, and levels purely using primitive Parts, Meshes, and CSG (UnionAsync/SubtractAsync) via Studio Commands.`;
+      assetInstruction = `\n\nCRITICAL ASSET PREFERENCE: The user has requested CUSTOM CODE & SCRIPTS. Build modular game mechanics, algorithms, and procedural systems using clean Luau scripts instead of relying on external toolbox models.`;
     }
 
     let toneInstruction = '';
@@ -410,47 +410,32 @@ CRITICAL PREFERENCE: ${i}`).join('');
     if (guiCreationEnabled) {
       guiInstruction = `
 
-CRITICAL PREFERENCE: You have access to "GUI Creation v1". You are encouraged to create the best, fully functional GUI possible. You can even build entire games out of pure GUI (e.g., clicker games, idle games, menu-based RPGs). When generating UI, use modern, aesthetic, responsive practices in Roblox. Use UIListLayout, UICorner, UIPadding, gradients, and proper scaling. Your primary tool for this is outputting "Command" objects that generate these ScreenGuis and LocalScripts inside StarterGui.`;
+CRITICAL PREFERENCE: You have access to "GUI Creation v1". You are encouraged to create clean, responsive UI with Luau scripts placed under StarterGui or StarterPlayer.StarterPlayerScripts (using UIListLayout, UICorner, UIPadding, gradients, and proper scaling).`;
     }
 
 
     const systemInstruction = `You are VibeCoder, an expert Roblox Luau AI coding assistant.${gameStateContext}
-You have full remote control over the user's Roblox Studio environment. You can write scripts, manipulate the 3D world, change game settings, and fetch assets directly from the Toolbox (Creator Marketplace).${assetInstruction}${behaviorInstructions}${guiInstruction}
+You write clean, modular, production-ready Luau scripts that synchronize directly to Roblox Studio via live code sync.${assetInstruction}${behaviorInstructions}${guiInstruction}
 
 Capabilities:
-
-1. Create a new file: Output a JSON object with "type" set to "Script", "LocalScript", or "ModuleScript", a "path" (e.g. "ServerScriptService.MyScript"), and "content".
-2. Edit an existing file: Output a JSON object with "type" set to "Edit", the "path", the exact "find" string you want to replace, and the "replace" string. This is faster and prevents bugs from rewriting the whole file. The "find" block must match EXACTLY.
-3. Run Studio Commands (Full Power): Output a JSON object with "type" set to "Command", and "content" with raw Lua. This Lua code is executed directly in Roblox Studio with plugin-level permissions. You have LIMITLESS control. Examples of what you can and should do:
- - Level & World Building: Spawn and position Parts, Meshes, and Models. Group them into Folders/Models.
- - Terrain Generation: Use workspace.Terrain methods (FillBlock, FillBall, WriteVoxels) to generate biomes, water, and landscapes.
- - Lighting & Atmosphere: Configure game.Lighting. Add Skyboxes, SunRays, Bloom, ColorCorrection, Atmosphere, and adjust ClockTime/Brightness.
- - GUI Creation: Generate complete ScreenGuis, Frames, TextLabels, TextButtons, and UILayouts (UIListLayout, UIGridLayout) dynamically in StarterGui.
- - Physics & Constraints: Rig parts together using WeldConstraints, HingeConstraints, SpringConstraints, or AlignPosition. Apply VectorForces or AngularVelocity.
- - NPC & Pathfinding: Spawn R15/R6 dummy rigs, use PathfindingService to map out routes, and make NPCs move.
- - Services & Organization: Use CollectionService to tag objects. Configure Teams and SpawnLocations. Set up Leaderstats via PlayerAdded events in commands.
- - Audio & VFX: Spawn Sound instances, configure SoundGroups, or emit ParticleEmitters.
- - CSG (Solid Modeling): Dynamically use UnionAsync or SubtractAsync to carve and combine parts into complex custom geometry.
- - DataStores & Analytics: Query DataStoreService to inspect, modify, or seed player data dynamically.
- - Animation & Cinematics: Script Camera.CFrame for cutscenes, create Animation objects, and use TweenService for rich motion.
- - Custom Materials & Textures: Use MaterialService to generate MaterialVariants and apply PBR texturing dynamically.
+1. Create or Overwrite a Script: Output a JSON object with "type" set to "Script" (server-side, e.g. ServerScriptService.MyScript), "LocalScript" (client-side, e.g. StarterPlayer.StarterPlayerScripts.Movement), or "ModuleScript" (shared, e.g. ReplicatedStorage.Shared.Modules.GameConfig), along with "path" and "content".
+2. Edit an existing Script: Output a JSON object with "type" set to "Edit", the "path", the exact "find" string you want to replace, and the "replace" string. The "find" block must match EXACTLY.
 ${iconCapability}
 ${toolboxCapability}
 
 Format:
 {
-"explanation": "Brief explanation",
+"explanation": "Brief explanation of the Luau code structure and mechanics",
 "edits": [
-  { "type": "Edit", "path": "ServerScriptService.MyScript", "find": "old code...", "replace": "new code..." },
-  { "type": "Script", "path": "StarterPlayer.StarterPlayerScripts.NewScript", "content": "..." },
-  { "type": "Command", "content": "local part = Instance.new('Part'); part.Size = Vector3.new(10, 10, 10); part.Parent = workspace" },
-  { "type": "Icon", "prompt": "flat 2d rock icon", "name": "Rocks" },
-  { "type": "Asset", "query": "epic sword", "assetType": "Model" }
+  { "type": "Script", "path": "ServerScriptService.MainGameLogic", "content": "-- Server script code..." },
+  { "type": "LocalScript", "path": "StarterPlayer.StarterPlayerScripts.PlayerController", "content": "-- Client script code..." },
+  { "type": "ModuleScript", "path": "ReplicatedStorage.Shared.Modules.GameConfig", "content": "-- Shared module code..." },
+  { "type": "Edit", "path": "ServerScriptService.MainGameLogic", "find": "local SPEED = 16", "replace": "local SPEED = 24" }
 ]
 }
 DO NOT use markdown code blocks for the code. Only output the JSON.
 
-CRITICAL: If the user request is purely conversational (e.g. "hello", "who are you"), provide a friendly response in "explanation" and leave "edits" empty []. Do NOT build a game or execute commands unless explicitly asked.`;
+CRITICAL: If the user request is purely conversational (e.g. "hello", "who are you"), provide a friendly response in "explanation" and leave "edits" empty [].`;
 
     
     let reply = '';
@@ -615,11 +600,6 @@ CRITICAL: If the user request is purely conversational (e.g. "hello", "who are y
                               
                               if (uploadData && uploadData.image && uploadData.image.url) {
                                   explanation += `\n\nGenerated Icon URL for ${edit.name}: ${uploadData.image.url}`;
-                                  session.pendingCode.push({
-                                      id: Math.random().toString(36).substring(7),
-                                      type: 'Command',
-                                      code: `-- Generated Icon for ${edit.name}: ${uploadData.image.url}\nprint("Generated icon: ${uploadData.image.url}")`
-                                  });
                               } else {
                                   throw new Error('Failed to upload transparent image');
                               }
@@ -643,54 +623,10 @@ CRITICAL: If the user request is purely conversational (e.g. "hello", "who are y
                               // Fallback placeholder if search fails or returns nothing
                               foundId = Math.floor(Math.random() * 9000000) + 1000000;
                           }
-                          
-                          const luaCode = `local InsertService = game:GetService("InsertService")
-local success, result = pcall(function()
-  return InsertService:LoadAsset(${foundId})
-end)
-if success and result then
-  result.Parent = workspace
-  print("Successfully inserted ${edit.assetType} '${edit.query}' (ID: ${foundId}) into workspace")
-else
-  warn("Failed to load ${edit.assetType} '${edit.query}' (ID: ${foundId}). Note: Some assets may not be loadable via script or require manual insertion.")
-end`;
-
-                          explanation += `\n\nFetched ${edit.assetType} for "${edit.query}": rbxassetid://${foundId}`;
-                          session.pendingCode.push({
-                              id: Math.random().toString(36).substring(7),
-                              type: 'Command',
-                              code: luaCode
-                          });
+                          explanation += `\n\nIdentified ${edit.assetType} for "${edit.query}": Asset ID rbxassetid://${foundId}`;
                       } catch (err) {
-                          console.error('Error fetching asset:', err);
-                          const fallbackId = Math.floor(Math.random() * 9000000) + 1000000;
-                          const fallbackLua = `local InsertService = game:GetService("InsertService")
-local success, result = pcall(function() return InsertService:LoadAsset(${fallbackId}) end)
-if success and result then result.Parent = workspace end`;
-                          
-                          explanation += `\n\nFetched ${edit.assetType} for "${edit.query}" (fallback): rbxassetid://${fallbackId}`;
-                          
-                          const commandPath = `Fetch_Asset_${new Date().toLocaleTimeString().replace(/:/g, '')}.luau`;
-                          session.generatedFiles.push({ path: commandPath, type: 'Command', content: fallbackLua });
-                          diffs.push({ path: commandPath, linesAdded: fallbackLua.split('\n').length, linesRemoved: 0 });
-
-                          session.pendingCode.push({
-                              id: Math.random().toString(36).substring(7),
-                              type: 'Command',
-                              code: fallbackLua
-                          });
+                          console.error('Error searching asset:', err);
                       }
-                  } else if (edit.type === 'Command') {
-                      const commandCode = edit.content || edit.code || '';
-                      const commandPath = `Studio_Command_${new Date().toLocaleTimeString().replace(/:/g, '')}.luau`;
-                      session.generatedFiles.push({ path: commandPath, type: edit.type, content: commandCode });
-                      diffs.push({ path: commandPath, linesAdded: commandCode.split('\n').length, linesRemoved: 0 });
-                      
-                      session.pendingCode.push({
-                          id: Math.random().toString(36).substring(7),
-                          type: edit.type,
-                          code: commandCode
-                      });
                   } else if (edit.type === 'Edit') {
                       let existingFile = session.generatedFiles.find(f => f.path === edit.path);
                       if (existingFile && edit.find) {
@@ -702,14 +638,14 @@ if success and result then result.Parent = workspace end`;
                               
                               session.pendingCode.push({
                                   id: Math.random().toString(36).substring(7),
-                                  type: existingFile.type as "Script" | "LocalScript" | "ModuleScript" | "Command",
+                                  type: existingFile.type as "Script" | "LocalScript" | "ModuleScript",
                                   path: existingFile.path,
                                   code: existingFile.content
                               });
                           }
                       }
-                  } else {
-                      // New file or overwrite
+                  } else if (edit.type === 'Script' || edit.type === 'LocalScript' || edit.type === 'ModuleScript') {
+                      // New script file or full script overwrite
                       let existingFile = session.generatedFiles.find(f => f.path === edit.path);
                       const newContent = edit.content || edit.code || '';
                       const linesAdded = newContent.split('\n').length;
@@ -717,6 +653,7 @@ if success and result then result.Parent = workspace end`;
                       if (existingFile) {
                           const linesRemoved = existingFile.content.split('\n').length;
                           existingFile.content = newContent;
+                          existingFile.type = edit.type;
                           diffs.push({ path: edit.path, linesAdded, linesRemoved });
                       } else {
                           session.generatedFiles.push({ path: edit.path, type: edit.type, content: newContent });

@@ -448,6 +448,77 @@ local function disconnect()
     print("[VibeCoder Plugin] Disconnected session " .. PIN)
 end
 
+-- Helper to resolve service and nested folders from path
+local function resolveParentAndName(pathStr, defaultType)
+    if not pathStr or pathStr == "" then
+        local defaultParent = ServerScriptService
+        if defaultType == "LocalScript" then
+            defaultParent = StarterPlayerScripts
+        elseif defaultType == "ModuleScript" then
+            defaultParent = ReplicatedStorage
+        end
+        return defaultParent, "VibeCoder_" .. tostring(os.time())
+    end
+
+    -- Normalize slashes to dots
+    local cleanPath = string.gsub(pathStr, "/", ".")
+    local parts = {}
+    for part in string.gmatch(cleanPath, "[^%.]+") do
+        table.insert(parts, part)
+    end
+
+    if #parts == 1 then
+        local defaultParent = ServerScriptService
+        if defaultType == "LocalScript" then
+            defaultParent = StarterPlayerScripts
+        elseif defaultType == "ModuleScript" then
+            defaultParent = ReplicatedStorage
+        end
+        return defaultParent, parts[1]
+    end
+
+    -- Determine root service
+    local rootName = parts[1]
+    local currentParent = ServerScriptService
+    local startIndex = 2
+
+    if rootName == "ServerScriptService" or rootName == "src" and parts[2] == "server" then
+        currentParent = ServerScriptService
+        if rootName == "src" then startIndex = 3 end
+    elseif rootName == "StarterPlayer" or rootName == "StarterPlayerScripts" or (rootName == "src" and parts[2] == "client") then
+        currentParent = StarterPlayerScripts
+        if rootName == "StarterPlayer" and parts[2] == "StarterPlayerScripts" then startIndex = 3 end
+        if rootName == "src" then startIndex = 3 end
+    elseif rootName == "ReplicatedStorage" or (rootName == "src" and parts[2] == "shared") then
+        currentParent = ReplicatedStorage
+        if rootName == "src" then startIndex = 3 end
+    elseif rootName == "StarterGui" or (rootName == "src" and parts[2] == "starter-gui") then
+        currentParent = StarterGui
+        if rootName == "src" then startIndex = 3 end
+    end
+
+    -- Traverse intermediate folders
+    for i = startIndex, #parts - 1 do
+        local folderName = parts[i]
+        local folder = currentParent:FindFirstChild(folderName)
+        if not folder then
+            folder = Instance.new("Folder")
+            folder.Name = folderName
+            folder.Parent = currentParent
+        end
+        currentParent = folder
+    end
+
+    local scriptName = parts[#parts]
+    -- Strip .luau or .lua extension if present in the name
+    scriptName = string.gsub(scriptName, "%.server$", "")
+    scriptName = string.gsub(scriptName, "%.client$", "")
+    scriptName = string.gsub(scriptName, "%.luau$", "")
+    scriptName = string.gsub(scriptName, "%.lua$", "")
+
+    return currentParent, scriptName
+end
+
 -- Connect initial session
 local ok, res = postJson("/api/plugin/connect", { pin = PIN })
 if not ok or (res and res.StatusCode ~= 200) then
@@ -455,7 +526,7 @@ if not ok or (res and res.StatusCode ~= 200) then
     return
 end
 
-print("[VibeCoder Plugin] Connected successfully! Live syncing enabled.")
+print("[VibeCoder Plugin] Connected successfully! Live code sync active.")
 
 -- Handle unload / close events
 if typeof(plugin) == "Instance" and plugin:IsA("Plugin") then
@@ -463,7 +534,15 @@ if typeof(plugin) == "Instance" and plugin:IsA("Plugin") then
 end
 game:BindToClose(disconnect)
 
--- Main synchronization loop
+-- Heartbeat loop
+task.spawn(function()
+    while isRunning do
+        task.wait(4)
+        postJson("/api/plugin/heartbeat", { pin = PIN })
+    end
+end)
+
+-- Main code sync loop
 task.spawn(function()
     while isRunning do
         task.wait(1.5)
@@ -480,20 +559,21 @@ task.spawn(function()
             local data = HttpService:JSONDecode(pollRes.Body)
             if data and data.pending and #data.pending > 0 then
                 for _, item in ipairs(data.pending) do
-                    print("[VibeCoder Plugin] Syncing incoming script: " .. tostring(item.path or item.type))
-                    -- Create or update script instance
-                    local parent = ServerScriptService
-                    if item.type == "LocalScript" then
-                        parent = StarterPlayerScripts
-                    elseif item.type == "ModuleScript" then
-                        parent = ReplicatedStorage
-                    end
+                    local scriptType = item.type or "Script"
+                    local parent, scriptName = resolveParentAndName(item.path, scriptType)
                     
-                    local newScript = Instance.new(item.type or "Script")
-                    newScript.Name = item.path or ("VibeCoder_" .. tostring(item.id or os.time()))
-                    newScript.Source = item.code or ""
-                    newScript.Parent = parent
-                    print("[VibeCoder Plugin] Installed " .. newScript.Name .. " in " .. parent.Name)
+                    -- Check if script already exists to update in-place
+                    local targetScript = parent:FindFirstChild(scriptName)
+                    if targetScript and (targetScript:IsA("Script") or targetScript:IsA("LocalScript") or targetScript:IsA("ModuleScript")) then
+                        targetScript.Source = item.code or ""
+                        print("[VibeCoder Plugin] Updated " .. scriptName .. " (" .. targetScript.ClassName .. ") in " .. parent:GetFullName())
+                    else
+                        local newScript = Instance.new(scriptType)
+                        newScript.Name = scriptName
+                        newScript.Source = item.code or ""
+                        newScript.Parent = parent
+                        print("[VibeCoder Plugin] Created " .. scriptName .. " (" .. scriptType .. ") in " .. parent:GetFullName())
+                    end
                 end
             end
         elseif not pollOk then
