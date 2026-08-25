@@ -600,15 +600,24 @@ end)
               <p className="text-[10px] text-neutral-400 mt-2.5 leading-normal">
                 Enter this PIN in the VibeCoder Roblox Studio plugin to sync.
               </p>
-              <div className="mt-3 pt-3 border-t border-white/5">
+              <div className="mt-3 pt-3 border-t border-white/5 space-y-2">
+                <a
+                  href="https://create.roblox.com/store/asset/115974186525830"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setIsPinDropdownOpen(false)}
+                  className="w-full py-2 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <ArrowUpRight size={14} /> Install Plugin
+                </a>
                 <button
                   onClick={() => {
                     setIsPinDropdownOpen(false);
                     downloadPluginLuaScript();
                   }}
-                  className="w-full py-2 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
+                  className="w-full py-1.5 bg-transparent hover:bg-white/5 text-neutral-400 hover:text-neutral-200 text-[11px] font-medium rounded-xl transition-colors flex items-center justify-center gap-1.5"
                 >
-                  <Download size={13} /> Install Plugin
+                  <Download size={12} /> Download .lua Script
                 </button>
               </div>
             </div>

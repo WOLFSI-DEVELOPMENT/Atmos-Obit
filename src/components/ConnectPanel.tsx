@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { QrCode, MonitorPlay, KeyRound, CheckCircle2 } from 'lucide-react';
+import { QrCode, MonitorPlay, KeyRound, CheckCircle2, ArrowUpRight } from 'lucide-react';
 
 export default function ConnectPanel({ onConnect }: { onConnect: (pin: string) => void }) {
   const [code, setCode] = useState('');
@@ -102,8 +102,16 @@ export default function ConnectPanel({ onConnect }: { onConnect: (pin: string) =
         </div>
       </div>
       
-      <div className="mt-auto p-4 border-t border-[#222] text-xs text-[#555] text-center uppercase tracking-[0.2em]">
-        VibeCoder Plugin v1.0.4 • Waiting for active session
+      <div className="mt-auto p-4 border-t border-[#222] text-xs text-[#888] flex items-center justify-between">
+        <span className="uppercase tracking-[0.15em] text-[11px] text-[#666]">VibeCoder Plugin</span>
+        <a 
+          href="https://create.roblox.com/store/asset/115974186525830"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-white hover:text-neutral-300 flex items-center gap-1 text-[11px] font-medium bg-[#1e1e1e] hover:bg-[#282828] px-2.5 py-1 rounded transition-colors"
+        >
+          Install from Creator Store <ArrowUpRight size={13} />
+        </a>
       </div>
     </div>
   );
