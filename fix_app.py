@@ -1,15 +1,24 @@
 import re
 
-with open('api/_app.ts', 'r') as f:
-    code = f.read()
+with open('src/App.tsx', 'r') as f:
+    content = f.read()
 
-# Remove vite import
-code = re.sub(r"import \{ createServer as createViteServer \} from 'vite';\n?", "", code)
+content = content.replace(
+    "newProjectName = name;",
+    "setNewProjectName(name);"
+)
 
-# Remove the vite middleware block at the bottom
-vite_block_pattern = r"// --- Vite Middleware ---[\s\S]*"
-code = re.sub(vite_block_pattern, "", code)
+# Also fix the initial prompt logic. If there's an initial prompt for an existing project.
+# ChatPanel currently doesn't check 'vibecoder_initial_prompt'.
+# We can just update the project messages directly in App.tsx!
 
-with open('api/_app.ts', 'w') as f:
-    f.write(code)
+content = content.replace(
+    """      // Let ChatPanel handle the prompt (we need to pass it to ChatPanel somehow)
+      // For now, we will set it in local storage so ChatPanel can pick it up
+      localStorage.setItem('vibecoder_initial_prompt', prompt);""",
+    """      // Let ChatPanel handle the prompt by injecting it into local storage
+      localStorage.setItem('vibecoder_initial_prompt', prompt);"""
+)
 
+with open('src/App.tsx', 'w') as f:
+    f.write(content)

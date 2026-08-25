@@ -1,8 +1,12 @@
-with open('server.ts', 'r') as f:
-    lines = f.readlines()
-    
-# Remove lines 1 and 2
-lines = lines[2:]
+import re
 
-with open('server.ts', 'w') as f:
-    f.writelines(lines)
+with open('src/components/HomeLayout.tsx', 'r') as f:
+    content = f.read()
+
+content = content.replace(
+    "import { Cloud, Search, Plus, Mic, MicOff, Folder, Code, Terminal, Upload, X, RefreshCw, Bug, Check, ChevronDown } from 'lucide-react';",
+    "import { Cloud, Search, Plus, Mic, MicOff, Folder, Code, Terminal, Upload, X, RefreshCw, Bug, Check, ChevronDown, Monitor, GitBranch } from 'lucide-react';"
+)
+
+with open('src/components/HomeLayout.tsx', 'w') as f:
+    f.write(content)

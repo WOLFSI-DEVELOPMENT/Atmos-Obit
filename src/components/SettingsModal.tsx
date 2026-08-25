@@ -76,9 +76,11 @@ interface SettingsModalProps {
   onLogout: () => void;
   selectedModel: string;
   onModelChange: (modelId: string) => void;
+  betaHomeLayout?: boolean;
+  onBetaHomeLayoutChange?: (val: boolean) => void;
 }
 
-export function SettingsModal({ isOpen, onClose, user, onLogout, selectedModel, onModelChange }: SettingsModalProps) {
+export function SettingsModal({ isOpen, onClose, user, onLogout, selectedModel, onModelChange, betaHomeLayout = true, onBetaHomeLayoutChange }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<'account' | 'personalize' | 'behavior' | 'ai' | 'permissions' | 'experiments'>('account');
   const [activeSubView, setActiveSubView] = useState<'main' | 'models'>('main');
 
@@ -561,6 +563,25 @@ export function SettingsModal({ isOpen, onClose, user, onLogout, selectedModel, 
                           </div>
                         </div>
                         <span className="text-xs text-white font-medium">Dark</span>
+                      </div>
+                    </div>
+                  </div>
+
+
+                  <div className="space-y-4">
+                    <h3 className="text-[13px] text-[#8e8e93] uppercase font-medium pl-1">Beta Features</h3>
+                    <div className="bg-[#2c2c2e] rounded-3xl [corner-shape:superellipse(1.82)] p-4 flex flex-col gap-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-col">
+                          <span className="text-white text-sm font-medium">New Home Layout</span>
+                          <span className="text-[#8e8e93] text-xs">Enable the beta start screen</span>
+                        </div>
+                        <button
+                          onClick={() => onBetaHomeLayoutChange?.(!betaHomeLayout)}
+                          className={`w-11 h-6 rounded-full transition-colors flex items-center px-1 ${betaHomeLayout ? 'bg-[#30d158]' : 'bg-[#3a3a3c]'}`}
+                        >
+                          <div className={`w-4 h-4 rounded-full bg-white transition-transform ${betaHomeLayout ? 'translate-x-5' : 'translate-x-0'}`} />
+                        </button>
                       </div>
                     </div>
                   </div>

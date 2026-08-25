@@ -25,7 +25,7 @@ import {
   MoreVertical
 } from 'lucide-react';
 import Markdown from 'react-markdown';
-import { Project, Message, GEMINI_MODELS } from '../types';
+import { Project, Message, GEMINI_MODELS, OPENAI_MODELS, ANTHROPIC_MODELS } from '../types';
 
 interface ChatPanelProps {
   project: Project;
@@ -239,17 +239,19 @@ export default function ChatPanel({
 
     try {
       const recognition = new SpeechRecognition();
-      recognition.continuous = false;
+      recognition.continuous = true;
       recognition.interimResults = true;
+      recognition.lang = 'en-US';
 
       recognition.onstart = () => setIsListening(true);
       recognition.onend = () => setIsListening(false);
       recognition.onerror = () => setIsListening(false);
 
       recognition.onresult = (event: any) => {
-        const transcript = Array.from(event.results)
-          .map((result: any) => result[0].transcript)
-          .join('');
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
         setInput(transcript);
       };
 
@@ -445,10 +447,10 @@ end
   }, [input, isLoading, project.messages]);
 
   return (
-    <div className="flex-1 bg-black flex flex-col h-full rounded-none relative">
+    <div className="flex-1 bg-[#181818] flex flex-col h-full rounded-none relative">
       
       {/* Top Gradient Fade for Messages */}
-      <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black via-black/90 to-transparent pointer-events-none z-10" />
+      <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-[#181818] via-[#181818]/90 to-transparent pointer-events-none z-10" />
 
       {/* Top Workspace Header */}
       <div className="absolute top-0 left-0 right-0 py-2.5 pr-4 pl-8 flex items-center justify-between z-20 pointer-events-none">
@@ -668,7 +670,7 @@ end
         </div>
 
         {/* Input Prompt Box - Sleek styling matching home page */}
-        <div className="w-full bg-[#2a2a2a]/50 backdrop-blur-xl rounded-2xl relative p-4 flex flex-col min-h-[100px]">
+        <div data-squircle data-squircle-radius="24" data-squircle-smoothing="1" className="w-full bg-[#2a2a2a]/50 backdrop-blur-xl rounded-2xl relative p-4 flex flex-col min-h-[100px]">
           
           {/* Image Attachment Indicator */}
           {selectedImage && (

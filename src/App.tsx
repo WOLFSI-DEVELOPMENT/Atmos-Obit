@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import CornerKit from '@cornerkit/core';
 import { 
   Plus, 
   Terminal, 
@@ -43,6 +44,7 @@ import { AuthPage } from './components/AuthPage';
 import { SettingsModal } from './components/SettingsModal';
 import { ProductIntroModal } from './components/ProductIntroModal';
 import { ArtifactsPanel } from './components/ArtifactsPanel';
+import { HomeLayout } from './components/HomeLayout';
 
 import { Project, Message, GEMINI_MODELS } from './types';
 
@@ -59,6 +61,12 @@ const PROJECT_NAMES = [
 ];
 
 export default function App() {
+  useEffect(() => {
+    const kit = new CornerKit();
+    kit.auto();
+    return () => kit.destroy();
+  }, []);
+
   const [session, setSession] = useState<{ user: any } | null>(null);
   const [isPending, setIsPending] = useState(true);
 
@@ -161,12 +169,18 @@ export default function App() {
   const homeModelDropdownRef = useRef<HTMLDivElement>(null);
   
   const [isArtifactsPanelOpen, setIsArtifactsPanelOpen] = useState(false);
+    const [betaHomeLayout, setBetaHomeLayout] = useState(() => {
+    const stored = localStorage.getItem('vibecoder_beta_home_layout');
+    return stored === null ? true : stored === 'true';
+  });
   const [artifactsEnabled, setArtifactsEnabled] = useState(false);
 
   useEffect(() => {
     let lastSyncData = '';
     const interval = setInterval(() => {
-      setSendBtnColor(localStorage.getItem('vibecoder_send_btn_color') || '#b0b0b0');
+            setSendBtnColor(localStorage.getItem('vibecoder_send_btn_color') || '#b0b0b0');
+      const b = localStorage.getItem('vibecoder_beta_home_layout');
+      setBetaHomeLayout(b === null ? true : b === 'true');
       setSendBtn3D(localStorage.getItem('vibecoder_send_btn_3d') === 'true');
       setArtifactsEnabled(localStorage.getItem('vibecoder_exp_artifacts') === 'true');
       
@@ -191,7 +205,9 @@ export default function App() {
         lastSyncData = currentSyncData;
       }
     }, 1500);
-    setSendBtnColor(localStorage.getItem('vibecoder_send_btn_color') || '#b0b0b0');
+          setSendBtnColor(localStorage.getItem('vibecoder_send_btn_color') || '#b0b0b0');
+      const b = localStorage.getItem('vibecoder_beta_home_layout');
+      setBetaHomeLayout(b === null ? true : b === 'true');
     setSendBtn3D(localStorage.getItem('vibecoder_send_btn_3d') === 'true');
     return () => clearInterval(interval);
   }, [session]);
@@ -210,17 +226,19 @@ export default function App() {
 
     try {
       const recognition = new SpeechRecognition();
-      recognition.continuous = false;
+      recognition.continuous = true;
       recognition.interimResults = true;
+      recognition.lang = 'en-US';
 
       recognition.onstart = () => setIsHomeListening(true);
       recognition.onend = () => setIsHomeListening(false);
       recognition.onerror = () => setIsHomeListening(false);
 
       recognition.onresult = (event: any) => {
-        const transcript = Array.from(event.results)
-          .map((result: any) => result[0].transcript)
-          .join('');
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
         setNewProjectName(transcript);
       };
 
@@ -330,12 +348,23 @@ export default function App() {
     }, 2000);
   };
 
-  const handleCreateProject = async (e?: React.FormEvent) => {
+    const handleHomeSendMessage = (prompt: string, projId: string | null) => {
+    if (projId) {
+      setActiveProjectId(projId);
+      // Let ChatPanel handle the prompt by injecting it into local storage
+      localStorage.setItem('vibecoder_initial_prompt', prompt);
+    } else {
+      // Create new project and send
+      handleCreateProject(undefined, prompt);
+    }
+  };
+
+  const handleCreateProject = async (e?: React.FormEvent, initialPrompt?: string, file?: File | null, directName?: string): Promise<string> => {
     if (e) e.preventDefault();
     setIsGenerating(true);
     setConnectError(null);
 
-    const name = newProjectName.trim() || PROJECT_NAMES[Math.floor(Math.random() * PROJECT_NAMES.length)];
+    const name = (directName || newProjectName).trim() || PROJECT_NAMES[Math.floor(Math.random() * PROJECT_NAMES.length)];
 
     try {
       const res = await fetch('/api/sync/create', { method: 'POST' });
@@ -348,19 +377,24 @@ export default function App() {
         pin: data.pin,
         createdAt: Date.now(),
         status: 'waiting',
-        messages: [
+        messages: initialPrompt ? [{role: 'user', content: initialPrompt}, {role: 'model', content: `Project created! Processing: ${initialPrompt}`}] : [
           { role: 'model', content: `Welcome to **${name}**! Your session PIN is \`${data.pin}\`.\n\nTo connect this workspace directly to Roblox Studio:\n1. Open your game in Roblox Studio.\n2. Open the **VibeCoder plugin**.\n3. Enter the PIN \`${data.pin}\` and click Connect.\n\nOnce synced, any scripts generated here will automatically load in Roblox Studio in real-time!` }
         ]
       };
 
       setProjects(prev => [newProj, ...prev]);
-      setActiveProjectId(newProj.id);
+      if (initialPrompt) {
+        setActiveProjectId(newProj.id);
+        localStorage.setItem('vibecoder_initial_prompt', initialPrompt);
+      }
       setGeneratedPin(data.pin);
       setNewProjectName('');
       startPolling(data.pin, newProj.id);
+      return newProj.id;
     } catch (err: any) {
       console.error(err);
       setConnectError(err.message || 'Error generating project session.');
+      throw err;
     } finally {
       setIsGenerating(false);
     }
@@ -508,7 +542,7 @@ export default function App() {
       <div 
         className={`${
           isSidebarOpen ? 'w-[280px] border-r border-[#2a2a2a]/50' : 'w-0 border-r-0'
-        } bg-[#1c1c1c] flex flex-col justify-between select-none transition-all duration-300 ease-in-out shrink-0 overflow-hidden relative z-40`}
+        } bg-[#202020] flex flex-col justify-between select-none transition-all duration-300 ease-in-out shrink-0 overflow-hidden relative z-40`}
       >
         <div className="flex flex-col flex-1 overflow-hidden min-w-[280px]">
           {/* Logo Brand Header */}
@@ -572,10 +606,10 @@ export default function App() {
           {/* Project List Items - Scrollable area with fog */}
           <div className="relative flex-1 overflow-hidden min-h-0 flex flex-col">
             {/* Top dark grey fog shadow */}
-            <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-[#1c1c1c] to-transparent z-10 pointer-events-none" />
+            <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-[#202020] to-transparent z-10 pointer-events-none" />
             
             {/* Bottom dark grey fog shadow */}
-            <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-[#1c1c1c] to-transparent z-10 pointer-events-none" />
+            <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-[#202020] to-transparent z-10 pointer-events-none" />
 
             <div className="flex-1 overflow-y-auto px-3 pt-2 pb-6 space-y-1 scrollbar-none">
               {filteredProjects.length === 0 ? (
@@ -683,7 +717,24 @@ export default function App() {
             </button>
           )}
 
-          {activeProject ? (
+          {!activeProject && betaHomeLayout ? (
+            <HomeLayout
+              projects={projects}
+              activeProjectId={activeProjectId}
+              onSelectProject={handleSelectProject}
+              onCreateProject={async (name, file) => {
+                return await handleCreateProject(undefined, undefined, file, name);
+              }}
+              onSendMessage={handleHomeSendMessage}
+              selectedModel={selectedModel}
+              onModelChange={setSelectedModel}
+              isListening={isHomeListening}
+              toggleSpeechRecognition={toggleHomeSpeechRecognition}
+              input={newProjectName}
+              setInput={setNewProjectName}
+              sendBtnColor={sendBtnColor}
+            />
+          ) : activeProject ? (
             /* ACTIVE CHAT WORKSPACE (Takes up full 100% of pure black panel - no files) */
             <div className="flex w-full h-full">
               <ChatPanel 
@@ -974,6 +1025,11 @@ export default function App() {
           isOpen={isSettingsModalOpen}
           onClose={() => setIsSettingsModalOpen(false)}
           user={session?.user}
+          betaHomeLayout={betaHomeLayout}
+          onBetaHomeLayoutChange={(val) => {
+            setBetaHomeLayout(val);
+            localStorage.setItem('vibecoder_beta_home_layout', val.toString());
+          }}
           onLogout={async () => {
             await fetch('/api/auth/logout', { method: 'POST' });
             setSession(null);
