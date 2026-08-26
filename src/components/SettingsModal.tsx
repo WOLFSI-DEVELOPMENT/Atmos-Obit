@@ -78,11 +78,19 @@ interface SettingsModalProps {
   onModelChange: (modelId: string) => void;
   betaHomeLayout?: boolean;
   onBetaHomeLayoutChange?: (val: boolean) => void;
+  initialTab?: 'account' | 'personalize' | 'behavior' | 'ai' | 'permissions' | 'experiments' | 'whats-coming';
 }
 
-export function SettingsModal({ isOpen, onClose, user, onLogout, selectedModel, onModelChange, betaHomeLayout = true, onBetaHomeLayoutChange }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<'account' | 'personalize' | 'behavior' | 'ai' | 'permissions' | 'experiments' | 'whats-coming'>('account');
+export function SettingsModal({ isOpen, onClose, user, onLogout, selectedModel, onModelChange, betaHomeLayout = true, onBetaHomeLayoutChange, initialTab }: SettingsModalProps) {
+  const [activeTab, setActiveTab] = useState<'account' | 'personalize' | 'behavior' | 'ai' | 'permissions' | 'experiments' | 'whats-coming'>(initialTab || 'account');
   const [activeSubView, setActiveSubView] = useState<'main' | 'models'>('main');
+
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+      setActiveSubView('main');
+    }
+  }, [isOpen, initialTab]);
 
   const [apiKey, setApiKey] = useState('');
   const [openaiApiKey, setOpenaiApiKey] = useState('');

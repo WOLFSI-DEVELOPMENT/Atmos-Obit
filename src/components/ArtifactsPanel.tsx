@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, RefreshCw, Eye, Code2, Columns, Menu, SquareStack, ChevronDown, Download, Check, Play, Square, Image as ImageIcon } from 'lucide-react';
+import { X, RefreshCw, Eye, Code2, Columns, Menu, SquareStack, ChevronDown, Download, Check, Play, Square, Image as ImageIcon, Monitor, Tablet, Smartphone } from 'lucide-react';
 import Editor from '@monaco-editor/react';
 import { RobloxEnginePreview } from './RobloxEnginePreview';
 import { Project } from '../types';
@@ -22,12 +22,23 @@ export function ArtifactsPanel({ project, onClose, onFilesUpdate }: ArtifactsPan
     selectedFileRef.current = selectedFile;
   }, [selectedFile]);
 
+  useEffect(() => {
+    if (project.files && project.files.length > 0) {
+      setFiles(project.files);
+      if (!selectedFileRef.current) {
+        setSelectedFile(project.files[0]);
+      }
+    }
+  }, [project.files]);
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
   const [isPlayMode, setIsPlayMode] = useState(false);
+  const [devicePreset, setDevicePreset] = useState<'pc' | 'mobile' | 'tablet'>('pc');
+  const [isDeviceDropdownOpen, setIsDeviceDropdownOpen] = useState(false);
 
   const fetchFiles = async () => {
     if (!project.pin) return;
@@ -118,21 +129,24 @@ export function ArtifactsPanel({ project, onClose, onFilesUpdate }: ArtifactsPan
           
           <button 
             onClick={() => setActiveTab('preview')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'preview' ? 'bg-white/10 text-white' : 'text-neutral-500 hover:text-neutral-300'}`}
+            className={`p-2 rounded-lg transition-colors ${activeTab === 'preview' ? 'bg-white/10 text-white' : 'text-neutral-500 hover:text-neutral-300'}`}
+            title="Preview"
           >
-            <Eye size={14} /> Preview
+            <Eye size={16} />
           </button>
           <button 
             onClick={() => setActiveTab('code')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'code' ? 'bg-white/10 text-white' : 'text-neutral-500 hover:text-neutral-300'}`}
+            className={`p-2 rounded-lg transition-colors ${activeTab === 'code' ? 'bg-white/10 text-white' : 'text-neutral-500 hover:text-neutral-300'}`}
+            title="Code"
           >
-            <Code2 size={14} /> Code
+            <Code2 size={16} />
           </button>
           <button 
             onClick={() => setActiveTab('assets')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'assets' ? 'bg-white/10 text-white' : 'text-neutral-500 hover:text-neutral-300'}`}
+            className={`p-2 rounded-lg transition-colors ${activeTab === 'assets' ? 'bg-white/10 text-white' : 'text-neutral-500 hover:text-neutral-300'}`}
+            title="Assets"
           >
-            <ImageIcon size={14} /> Assets
+            <ImageIcon size={16} />
           </button>
         </div>
         
@@ -175,7 +189,46 @@ export function ArtifactsPanel({ project, onClose, onFilesUpdate }: ArtifactsPan
              )}
            </div>
 
-           <button className="p-1.5 hover:bg-white/10 rounded-md transition-colors ml-2" onClick={onClose} title="Close Panel">
+                       {/* DEVICE PRESET DROPDOWN */}
+            <div className="relative ml-1">
+              <button
+                onClick={() => setIsDeviceDropdownOpen(!isDeviceDropdownOpen)}
+                className="p-2 bg-[#1e1e22] hover:bg-white/10 text-neutral-300 hover:text-white rounded-lg transition-colors flex items-center justify-center border border-white/5"
+                title="Viewport Device Preset"
+              >
+                {devicePreset === 'pc' && <Monitor size={16} />}
+                {devicePreset === 'tablet' && <Tablet size={16} />}
+                {devicePreset === 'mobile' && <Smartphone size={16} />}
+              </button>
+
+              {isDeviceDropdownOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsDeviceDropdownOpen(false)} />
+                  <div className="absolute top-full right-0 mt-2 w-40 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
+                    <button
+                      onClick={() => { setDevicePreset('pc'); setIsDeviceDropdownOpen(false); }}
+                      className={`w-full text-left px-3.5 py-2.5 text-xs flex items-center gap-2.5 transition-colors ${devicePreset === 'pc' ? 'bg-white/15 text-white font-medium' : 'text-neutral-300 hover:bg-white/10 hover:text-white'}`}
+                    >
+                      <Monitor size={14} /> PC Desktop
+                    </button>
+                    <button
+                      onClick={() => { setDevicePreset('tablet'); setIsDeviceDropdownOpen(false); }}
+                      className={`w-full text-left px-3.5 py-2.5 text-xs flex items-center gap-2.5 transition-colors ${devicePreset === 'tablet' ? 'bg-white/15 text-white font-medium' : 'text-neutral-300 hover:bg-white/10 hover:text-white'}`}
+                    >
+                      <Tablet size={14} /> Tablet (iPad)
+                    </button>
+                    <button
+                      onClick={() => { setDevicePreset('mobile'); setIsDeviceDropdownOpen(false); }}
+                      className={`w-full text-left px-3.5 py-2.5 text-xs flex items-center gap-2.5 transition-colors ${devicePreset === 'mobile' ? 'bg-white/15 text-white font-medium' : 'text-neutral-300 hover:bg-white/10 hover:text-white'}`}
+                    >
+                      <Smartphone size={14} /> Mobile (Phone)
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <button className="p-1.5 hover:bg-white/10 rounded-md transition-colors ml-2" onClick={onClose} title="Close Panel">
               <Columns size={16} />
            </button>
         </div>
@@ -221,7 +274,12 @@ export function ArtifactsPanel({ project, onClose, onFilesUpdate }: ArtifactsPan
       <div className="flex-1 flex overflow-hidden relative">
         {activeTab === 'preview' ? (
           <div className="flex-1 flex bg-black overflow-hidden relative">
-             <RobloxEnginePreview code={selectedFile?.content || ''} isPlayMode={isPlayMode} />
+             <RobloxEnginePreview 
+               code={selectedFile?.content || ''} 
+               files={files} 
+               isPlayMode={isPlayMode} 
+               devicePreset={devicePreset}
+             />
           </div>
         ) : activeTab === 'assets' ? (
           <div className="flex-1 overflow-y-auto p-6 bg-[#0a0a0a] flex items-center justify-center">

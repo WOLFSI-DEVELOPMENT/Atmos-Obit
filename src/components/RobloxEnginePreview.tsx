@@ -2,7 +2,31 @@ import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, PointerLockControls, Html } from '@react-three/drei';
 import * as THREE from 'three';
+import { 
+  RobloxInstance, 
+  parseLuauInstances, 
+  aggregateProjectLuau 
+} from '../lib/robloxEngineParser';
+import { 
+  Maximize2, 
+  Minimize2, 
+  Monitor, 
+  Smartphone, 
+  Tablet, 
+  Layers, 
+  Box as BoxIcon, 
+  Sparkles, 
+  Info, 
+  Eye, 
+  Play, 
+  Square, 
+  MousePointer, 
+  Check, 
+  RotateCcw,
+  Zap
+} from 'lucide-react';
 
+// --- Procedural Sky Shader ---
 const RealisticSky3D = () => {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const skyRef = useRef<THREE.Mesh>(null);
@@ -12,7 +36,6 @@ const RealisticSky3D = () => {
       materialRef.current.uniforms.time.value = state.clock.getElapsedTime();
     }
     if (skyRef.current) {
-      // Keep skybox centered on camera to avoid clipping when panning far
       skyRef.current.position.copy(state.camera.position);
     }
   });
@@ -58,29 +81,29 @@ const RealisticSky3D = () => {
     void main() {
       vec3 dir = normalize(vPosition);
       
-      vec3 color1 = vec3(0.17, 0.36, 0.56); // #2c5d8f
-      vec3 color2 = vec3(0.51, 0.69, 0.84); // #82b0d6
-      vec3 color3 = vec3(0.93, 0.91, 0.86); // #ede8dc
+      vec3 color1 = vec3(0.14, 0.32, 0.52); // Roblox Sky Zenith
+      vec3 color2 = vec3(0.48, 0.67, 0.83); // Mid Sky
+      vec3 color3 = vec3(0.92, 0.90, 0.85); // Horizon
       
       float h = dir.y;
-      vec3 skyColor = mix(color3, color2, smoothstep(0.0, 0.3, h));
-      skyColor = mix(skyColor, color1, smoothstep(0.3, 1.0, h));
+      vec3 skyColor = mix(color3, color2, smoothstep(0.0, 0.35, h));
+      skyColor = mix(skyColor, color1, smoothstep(0.35, 1.0, h));
       
-      // Horizon ambient glow
-      skyColor += vec3(0.15, 0.07, 0.0) * (1.0 - smoothstep(0.0, 0.15, h)) * 0.4;
+      // Horizon ambient warmth
+      skyColor += vec3(0.18, 0.09, 0.02) * (1.0 - smoothstep(0.0, 0.15, h)) * 0.4;
 
-      // Animated procedural clouds
-      float c1 = fbm(dir * 3.0 + vec3(time * 0.01, 0.0, time * 0.015));
-      float c2 = fbm(dir * 6.0 + vec3(time * 0.02, 0.0, -time * 0.01));
+      // Animated volumetric procedural clouds
+      float c1 = fbm(dir * 3.2 + vec3(time * 0.012, 0.0, time * 0.016));
+      float c2 = fbm(dir * 6.5 + vec3(time * 0.022, 0.0, -time * 0.012));
 
-      float cloudDensity1 = smoothstep(0.4, 0.8, c1) * smoothstep(0.0, 0.3, h);
-      float cloudDensity2 = smoothstep(0.5, 0.9, c2) * smoothstep(0.05, 0.4, h);
+      float cloudDensity1 = smoothstep(0.42, 0.82, c1) * smoothstep(0.0, 0.3, h);
+      float cloudDensity2 = smoothstep(0.52, 0.92, c2) * smoothstep(0.05, 0.4, h);
 
       vec3 cloudColor1 = vec3(0.95, 0.95, 0.95);
       vec3 cloudColor2 = vec3(1.0, 1.0, 1.0);
 
-      vec3 finalColor = mix(skyColor, cloudColor1, cloudDensity1 * 0.6);
-      finalColor = mix(finalColor, cloudColor2, cloudDensity2 * 0.7);
+      vec3 finalColor = mix(skyColor, cloudColor1, cloudDensity1 * 0.65);
+      finalColor = mix(finalColor, cloudColor2, cloudDensity2 * 0.75);
 
       gl_FragColor = vec4(finalColor, 1.0);
     }
@@ -88,7 +111,7 @@ const RealisticSky3D = () => {
 
   return (
     <mesh ref={skyRef}>
-      <sphereGeometry args={[40000, 64, 64]} />
+      <sphereGeometry args={[40000, 48, 48]} />
       <shaderMaterial
         ref={materialRef}
         side={THREE.BackSide}
@@ -101,6 +124,7 @@ const RealisticSky3D = () => {
   );
 };
 
+// --- Roblox Baseplate Grid Texture ---
 function useBaseplateTexture() {
   return useMemo(() => {
     const canvas = document.createElement('canvas');
@@ -109,22 +133,19 @@ function useBaseplateTexture() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
 
-    const color1 = '#5b5e62'; // Darker checker
-    const color2 = '#63666b'; // Lighter checker
-    const lineColor = '#4b4d51'; // Grid line
+    const color1 = '#52555a'; // Darker checker
+    const color2 = '#5d6065'; // Lighter checker
+    const lineColor = '#45474a'; // Grid line
     
-    // Background (Light checker)
     ctx.fillStyle = color2;
     ctx.fillRect(0, 0, 1024, 1024);
 
-    // Dark checker
     ctx.fillStyle = color1;
     ctx.fillRect(0, 0, 512, 512);
     ctx.fillRect(512, 512, 512, 512);
 
-    // Lines
     ctx.fillStyle = lineColor;
-    const lineWidth = 6;
+    const lineWidth = 4;
     for (let i = 0; i <= 1024; i += 128) {
       ctx.fillRect(i - lineWidth/2, 0, lineWidth, 1024);
       ctx.fillRect(0, i - lineWidth/2, 1024, lineWidth);
@@ -145,10 +166,10 @@ function Baseplate() {
   const texture = useBaseplateTexture();
   return (
     <mesh position={[0, -8, 0]} receiveShadow>
-      <boxGeometry args={[16384, 16, 16384]} />
+      <boxGeometry args={[8192, 16, 8192]} />
       <meshStandardMaterial 
         map={texture || undefined} 
-        color={texture ? "#ffffff" : "#63666b"}
+        color={texture ? "#ffffff" : "#5d6065"}
         roughness={0.9} 
         metalness={0.0}
       />
@@ -156,280 +177,428 @@ function Baseplate() {
   );
 }
 
-// A generic mock interpreter to parse "Instance.new" commands
-// and render them in the Three.js canvas (for Parts) or HTML DOM (for GUI).
-
-interface MockInstance {
-  id: string;
-  varName: string;
-  type: string;
-  properties: Record<string, any>;
-  parentVar: string | null;
-}
-
-const extractNumber = (str: string) => {
-  const match = str.match(/-?\d*\.?\d+/);
-  return match ? parseFloat(match[0]) : 0;
-};
-
-const parsePropValue = (valStr: string) => {
-  // UDim2
-  let m = valStr.match(/UDim2\.new\(([^,]+),\s*([^,]+),\s*([^,]+),\s*([^\)]+)\)/);
-  if (m) {
-    return { type: 'UDim2', xScale: extractNumber(m[1]), xOffset: extractNumber(m[2]), yScale: extractNumber(m[3]), yOffset: extractNumber(m[4]) };
-  }
-  m = valStr.match(/UDim2\.fromOffset\(([^,]+),\s*([^\)]+)\)/);
-  if (m) {
-    return { type: 'UDim2', xScale: 0, xOffset: extractNumber(m[1]), yScale: 0, yOffset: extractNumber(m[2]) };
-  }
-  m = valStr.match(/UDim2\.fromScale\(([^,]+),\s*([^\)]+)\)/);
-  if (m) {
-    return { type: 'UDim2', xScale: extractNumber(m[1]), xOffset: 0, yScale: extractNumber(m[2]), yOffset: 0 };
-  }
-  // UDim
-  m = valStr.match(/UDim\.new\(([^,]+),\s*([^\)]+)\)/);
-  if (m) {
-    return { type: 'UDim', scale: extractNumber(m[1]), offset: extractNumber(m[2]) };
-  }
-  // Color3.fromRGB
-  m = valStr.match(/Color3\.fromRGB\(([^,]+),\s*([^,]+),\s*([^\)]+)\)/);
-  if (m) {
-    return `rgb(${extractNumber(m[1])}, ${extractNumber(m[2])}, ${extractNumber(m[3])})`;
-  }
-  m = valStr.match(/Color3\.new\(([^,]+),\s*([^,]+),\s*([^\)]+)\)/);
-  if (m) {
-    return `rgb(${Math.floor(extractNumber(m[1])*255)}, ${Math.floor(extractNumber(m[2])*255)}, ${Math.floor(extractNumber(m[3])*255)})`;
-  }
-  // Vector3
-  m = valStr.match(/Vector3\.new\(([^,]+),\s*([^,]+),\s*([^\)]+)\)/);
-  if (m) {
-    return [extractNumber(m[1]), extractNumber(m[2]), extractNumber(m[3])];
-  }
-  // Vector2
-  m = valStr.match(/Vector2\.new\(([^,]+),\s*([^\)]+)\)/);
-  if (m) {
-    return { type: 'Vector2', x: extractNumber(m[1]), y: extractNumber(m[2]) };
-  }
-  
-  // Booleans
-  if (valStr === 'true') return true;
-  if (valStr === 'false') return false;
-  
-  // Strings
-  m = valStr.match(/^"([^"]*)"$/) || valStr.match(/^'([^']*)'$/);
-  if (m) return m[1];
-  
-  // Numbers
-  if (!isNaN(parseFloat(valStr))) return parseFloat(valStr);
-  
-  return valStr;
-};
-
-const parseLuauToInstances = (code: string): MockInstance[] => {
-  const instances: Record<string, MockInstance> = {};
-  
-  const lines = code.split('\n');
-  
-  for (let line of lines) {
-    line = line.trim();
-    // Allow Instance.new("Type") or Instance.new("Type", parent)
-    const newMatch = line.match(/(?:local\s+)?([a-zA-Z0-9_]+)\s*=\s*Instance\.new\("([^"]+)"/);
-    if (newMatch) {
-      instances[newMatch[1]] = {
-        id: Math.random().toString(),
-        varName: newMatch[1],
-        type: newMatch[2],
-        properties: {},
-        parentVar: null
-      };
-    }
-  }
-
-  for (let line of lines) {
-    line = line.trim();
-    const propMatch = line.match(/^([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\s*=\s*(.+)$/);
-    if (propMatch) {
-      const varName = propMatch[1];
-      const propName = propMatch[2];
-      const valStr = propMatch[3].replace(/;$/, '');
-      
-      if (instances[varName]) {
-        if (propName === 'Parent') {
-          const p = valStr.trim();
-          if (instances[p]) {
-            instances[varName].parentVar = p;
-          }
-        } else {
-          instances[varName].properties[propName] = parsePropValue(valStr);
-        }
-      }
-    }
-  }
-  return Object.values(instances);
-};
-
-function PartMesh({ instance }: { instance: MockInstance }) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const [hovered, setHover] = useState(false);
-  
-  const pos = instance.properties.Position || [0, 0, 0];
-  const size = instance.properties.Size || [4, 1, 2];
-  const color = instance.properties.Color || '#a3a2a5';
-  const anchored = instance.properties.Anchored || false;
-
-  useFrame(() => {
-    if (meshRef.current && !anchored) {
-      if (meshRef.current.position.y > size[1] / 2) {
-        meshRef.current.position.y -= 0.1;
-      }
-    }
-  });
-
-  if (instance.type !== 'Part') return null;
-
+// --- Spawn Decal Star for SpawnLocation ---
+function SpawnLocationMarker({ position, size }: { position: [number, number, number], size: [number, number, number] }) {
   return (
-    <mesh
-      ref={meshRef}
-      position={pos}
-      onPointerOver={() => setHover(true)}
-      onPointerOut={() => setHover(false)}
-      castShadow
-      receiveShadow
-    >
-      <boxGeometry args={size} />
-      <meshStandardMaterial 
-        color={hovered ? '#ffffff' : color} 
-        roughness={0.8}
-      />
-      {hovered && (
-        <lineSegments>
-          <edgesGeometry args={[new THREE.BoxGeometry(...size)]} />
-          <lineBasicMaterial color="#00ff00" linewidth={2} />
-        </lineSegments>
-      )}
-    </mesh>
+    <group position={[position[0], position[1] + size[1] / 2 + 0.05, position[2]]} rotation={[-Math.PI / 2, 0, 0]}>
+      {/* Outer Ring */}
+      <mesh>
+        <ringGeometry args={[size[0] * 0.35, size[0] * 0.42, 32]} />
+        <meshBasicMaterial color="#ffffff" side={THREE.DoubleSide} transparent opacity={0.8} />
+      </mesh>
+      {/* Inner Spawn Star Emblem */}
+      <mesh>
+        <circleGeometry args={[size[0] * 0.28, 5]} />
+        <meshBasicMaterial color="#fcd34d" side={THREE.DoubleSide} />
+      </mesh>
+    </group>
   );
 }
 
-const RobloxGuiNode = ({ instance, instances }: { instance: MockInstance, instances: MockInstance[] }) => {
-  const children = instances.filter(i => i.parentVar === instance.varName);
+// --- Dynamic Particle Sparks for ParticleEmitter ---
+function ParticleSparks({ position }: { position: [number, number, number] }) {
+  const pointsRef = useRef<THREE.Points>(null);
+  const count = 30;
+
+  const [positions, velocities] = useMemo(() => {
+    const pos = new Float32Array(count * 3);
+    const vel = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 2;
+      pos[i * 3 + 1] = Math.random() * 2;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 2;
+
+      vel[i * 3] = (Math.random() - 0.5) * 0.8;
+      vel[i * 3 + 1] = Math.random() * 1.5 + 0.5;
+      vel[i * 3 + 2] = (Math.random() - 0.5) * 0.8;
+    }
+    return [pos, vel];
+  }, []);
+
+  useFrame((_, delta) => {
+    if (!pointsRef.current) return;
+    const geo = pointsRef.current.geometry;
+    const posAttr = geo.attributes.position;
+    const posArray = posAttr.array as Float32Array;
+
+    for (let i = 0; i < count; i++) {
+      posArray[i * 3 + 1] += velocities[i * 3 + 1] * delta;
+      posArray[i * 3] += velocities[i * 3] * delta;
+      posArray[i * 3 + 2] += velocities[i * 3 + 2] * delta;
+
+      if (posArray[i * 3 + 1] > 6) {
+        posArray[i * 3] = (Math.random() - 0.5) * 2;
+        posArray[i * 3 + 1] = 0;
+        posArray[i * 3 + 2] = (Math.random() - 0.5) * 2;
+      }
+    }
+    posAttr.needsUpdate = true;
+  });
+
+  return (
+    <points ref={pointsRef} position={position}>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          args={[positions, 3]}
+        />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.25}
+        color="#60a5fa"
+        transparent
+        opacity={0.8}
+        blending={THREE.AdditiveBlending}
+      />
+    </points>
+  );
+}
+
+// --- 3D Part Renderer ---
+function PartMesh({ 
+  instance, 
+  allInstances,
+  onSelect, 
+  isSelected 
+}: { 
+  instance: RobloxInstance; 
+  allInstances: RobloxInstance[];
+  onSelect: (inst: RobloxInstance) => void; 
+  isSelected: boolean;
+}) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const [hovered, setHover] = useState(false);
+  
+  const props = instance.properties;
+  const rawPos = props.Position || [0, 2, 0];
+  const pos: [number, number, number] = Array.isArray(rawPos) ? [rawPos[0] || 0, rawPos[1] || 2, rawPos[2] || 0] : [0, 2, 0];
+  
+  const rawSize = props.Size || [4, 1.2, 4];
+  const size: [number, number, number] = Array.isArray(rawSize) ? [Math.max(0.1, rawSize[0] || 4), Math.max(0.1, rawSize[1] || 1.2), Math.max(0.1, rawSize[2] || 4)] : [4, 1.2, 4];
+  
+  const color = props.Color || props.BrickColor || '#A3A2A5';
+  const shape = (props.Shape || '').toString().toLowerCase();
+  const materialType = (props.Material || '').toString().toLowerCase();
+  const transparency = typeof props.Transparency === 'number' ? props.Transparency : 0;
+  const reflectance = typeof props.Reflectance === 'number' ? props.Reflectance : 0;
+  const anchored = props.Anchored !== undefined ? props.Anchored : true;
+  const isNeon = materialType === 'neon';
+  const isGlass = materialType === 'glass';
+  const isMetal = materialType.includes('metal') || materialType.includes('diamondplate');
+
+  // Check children for Lights, Particles, Decals
+  const children = allInstances.filter(i => i.parentVar === instance.varName);
+  const pointLightChild = children.find(c => c.className === 'PointLight' || c.className === 'SurfaceLight');
+  const particleChild = children.find(c => c.className === 'ParticleEmitter');
+
+  // Shape geometry selection
+  let geometry = useMemo(() => {
+    if (shape === 'ball' || shape === 'sphere' || instance.className === 'Ball') {
+      return <sphereGeometry args={[Math.min(size[0], size[1], size[2]) / 2, 32, 32]} />;
+    }
+    if (shape === 'cylinder' || instance.className === 'Cylinder') {
+      return <cylinderGeometry args={[size[0] / 2, size[0] / 2, size[1], 32]} />;
+    }
+    if (shape === 'wedge' || instance.className === 'WedgePart') {
+      const geom = new THREE.BufferGeometry();
+      const sx = size[0] / 2, sy = size[1] / 2, sz = size[2] / 2;
+      // 5-face wedge geometry
+      const vertices = new Float32Array([
+        // Bottom Face
+        -sx, -sy, -sz,   sx, -sy, -sz,   sx, -sy,  sz,
+        -sx, -sy, -sz,   sx, -sy,  sz,  -sx, -sy,  sz,
+        // Back Face
+        -sx, -sy, -sz,  -sx,  sy, -sz,   sx,  sy, -sz,
+        -sx, -sy, -sz,   sx,  sy, -sz,   sx, -sy, -sz,
+        // Slanted Face
+        -sx,  sy, -sz,  -sx, -sy,  sz,   sx, -sy,  sz,
+        -sx,  sy, -sz,   sx, -sy,  sz,   sx,  sy, -sz,
+        // Left Triangle
+        -sx, -sy, -sz,  -sx, -sy,  sz,  -sx,  sy, -sz,
+        // Right Triangle
+         sx, -sy, -sz,   sx,  sy, -sz,   sx, -sy,  sz,
+      ]);
+      geom.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+      geom.computeVertexNormals();
+      return <primitive object={geom} attach="geometry" />;
+    }
+    return <boxGeometry args={size} />;
+  }, [shape, instance.className, size[0], size[1], size[2]]);
+
+  return (
+    <group position={pos}>
+      <mesh
+        ref={meshRef}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect(instance);
+        }}
+        onPointerOver={(e) => {
+          e.stopPropagation();
+          setHover(true);
+        }}
+        onPointerOut={() => setHover(false)}
+        castShadow
+        receiveShadow
+      >
+        {geometry}
+        <meshStandardMaterial 
+          color={color}
+          roughness={isGlass ? 0.1 : isMetal ? 0.25 : 0.6}
+          metalness={isMetal ? 0.85 : reflectance}
+          emissive={isNeon ? color : '#000000'}
+          emissiveIntensity={isNeon ? 1.8 : 0}
+          transparent={transparency > 0 || isGlass}
+          opacity={isGlass ? 0.5 : Math.max(0.05, 1 - transparency)}
+        />
+        {(hovered || isSelected) && (
+          <lineSegments>
+            <edgesGeometry args={[new THREE.BoxGeometry(...size)]} />
+            <lineBasicMaterial color={isSelected ? "#38bdf8" : "#22c55e"} linewidth={2} />
+          </lineSegments>
+        )}
+      </mesh>
+
+      {/* SpawnLocation Star Emblem */}
+      {instance.className === 'SpawnLocation' && (
+        <SpawnLocationMarker position={[0, 0, 0]} size={size} />
+      )}
+
+      {/* Embedded PointLight */}
+      {pointLightChild && (
+        <pointLight 
+          color={pointLightChild.properties.Color || pointLightChild.properties.BrickColor || color} 
+          intensity={pointLightChild.properties.Brightness || 2.5} 
+          distance={pointLightChild.properties.Range || 18} 
+        />
+      )}
+
+      {/* Embedded Particle Emitter */}
+      {particleChild && (
+        <ParticleSparks position={[0, size[1] / 2, 0]} />
+      )}
+    </group>
+  );
+}
+
+// --- 2D Roblox GUI Node Renderer ---
+const RobloxGuiNode = ({ 
+  instance, 
+  allInstances,
+  onSelect,
+  isSelected
+}: { 
+  instance: RobloxInstance; 
+  allInstances: RobloxInstance[];
+  onSelect: (inst: RobloxInstance) => void;
+  isSelected?: boolean;
+}) => {
+  const children = allInstances.filter(i => i.parentVar === instance.varName);
   const props = instance.properties;
   
   const style: React.CSSProperties = {
     position: 'absolute',
-    boxSizing: 'border-box'
+    boxSizing: 'border-box',
+    transition: 'transform 0.1s ease, box-shadow 0.1s ease',
   };
 
-  // Size
+  // UDim2 Size
   if (props.Size?.type === 'UDim2') {
     style.width = `calc(${props.Size.xScale * 100}% + ${props.Size.xOffset}px)`;
     style.height = `calc(${props.Size.yScale * 100}% + ${props.Size.yOffset}px)`;
-  } else if (instance.type !== 'ScreenGui') {
-    style.width = '100px';
-    style.height = '100px';
+  } else if (instance.className === 'ScreenGui') {
+    style.width = '100%';
+    style.height = '100%';
+  } else {
+    style.width = '140px';
+    style.height = '48px';
   }
 
-  // Position
+  // UDim2 Position
   if (props.Position?.type === 'UDim2') {
     style.left = `calc(${props.Position.xScale * 100}% + ${props.Position.xOffset}px)`;
     style.top = `calc(${props.Position.yScale * 100}% + ${props.Position.yOffset}px)`;
-  } else if (instance.type !== 'ScreenGui') {
+  } else if (instance.className !== 'ScreenGui') {
     style.left = '0';
     style.top = '0';
   }
 
-  // AnchorPoint
+  // Vector2 AnchorPoint
   if (props.AnchorPoint && Array.isArray(props.AnchorPoint)) {
     style.transform = `translate(-${props.AnchorPoint[0] * 100}%, -${props.AnchorPoint[1] * 100}%)`;
   } else if (props.AnchorPoint?.type === 'Vector2') {
     style.transform = `translate(-${props.AnchorPoint.x * 100}%, -${props.AnchorPoint.y * 100}%)`;
   }
 
-  // Background
-  if (props.BackgroundTransparency === 1 || instance.type === 'ScreenGui') {
+  // Background Transparency & Color
+  if (props.BackgroundTransparency === 1 || instance.className === 'ScreenGui') {
     style.backgroundColor = 'transparent';
-    style.border = 'none';
   } else {
-    style.backgroundColor = props.BackgroundColor3 || '#ffffff';
-    style.border = props.BorderSizePixel === 0 ? 'none' : '1px solid #000';
-  }
-
-  // UICorner support
-  const uiCorner = children.find(c => c.type === 'UICorner');
-  if (uiCorner) {
-    const radius = uiCorner.properties.CornerRadius;
-    if (radius?.type === 'UDim') {
-       style.borderRadius = radius.offset > 0 ? `${radius.offset}px` : `${radius.scale * 100}%`;
-    } else {
-       style.borderRadius = '8px'; // default if UICorner is present but unconfigured
+    style.backgroundColor = props.BackgroundColor3 || props.BrickColor || '#252528';
+    if (typeof props.BackgroundTransparency === 'number' && props.BackgroundTransparency > 0) {
+      style.opacity = 1 - props.BackgroundTransparency;
     }
   }
 
-  // Text
-  let textContent = null;
-  if (['TextLabel', 'TextButton', 'TextBox'].includes(instance.type)) {
-    textContent = props.Text !== undefined ? props.Text : instance.type;
-    style.color = props.TextColor3 || '#000000';
-    style.fontSize = props.TextSize ? `${props.TextSize}px` : '14px';
+  // Border & UICorner
+  const uiCorner = children.find(c => c.className === 'UICorner');
+  if (uiCorner) {
+    const radius = uiCorner.properties.CornerRadius;
+    if (radius?.type === 'UDim') {
+      style.borderRadius = radius.offset > 0 ? `${radius.offset}px` : `${radius.scale * 100}%`;
+    } else {
+      style.borderRadius = '12px';
+    }
+  } else {
+    style.borderRadius = props.BorderSizePixel === 0 ? '0px' : '4px';
+  }
+
+  // UIStroke
+  const uiStroke = children.find(c => c.className === 'UIStroke');
+  if (uiStroke) {
+    const thickness = uiStroke.properties.Thickness || 2;
+    const strokeColor = uiStroke.properties.Color || '#ffffff';
+    style.border = `${thickness}px solid ${strokeColor}`;
+  } else if (props.BorderSizePixel && props.BorderSizePixel > 0) {
+    style.border = `${props.BorderSizePixel}px solid ${props.BorderColor3 || '#000000'}`;
+  } else {
+    style.border = 'none';
+  }
+
+  // UIGradient
+  const uiGradient = children.find(c => c.className === 'UIGradient');
+  if (uiGradient && props.BackgroundTransparency !== 1) {
+    const rot = uiGradient.properties.Rotation || 90;
+    style.background = `linear-gradient(${rot}deg, ${props.BackgroundColor3 || '#3b82f6'}, rgba(255,255,255,0.15))`;
+  }
+
+  // UIPadding
+  const uiPadding = children.find(c => c.className === 'UIPadding');
+  if (uiPadding) {
+    const pTop = uiPadding.properties.PaddingTop?.offset || 0;
+    const pBottom = uiPadding.properties.PaddingBottom?.offset || 0;
+    const pLeft = uiPadding.properties.PaddingLeft?.offset || 0;
+    const pRight = uiPadding.properties.PaddingRight?.offset || 0;
+    style.padding = `${pTop}px ${pRight}px ${pBottom}px ${pLeft}px`;
+  }
+
+  // UIListLayout auto flex
+  const uiListLayout = children.find(c => c.className === 'UIListLayout');
+  if (uiListLayout) {
     style.display = 'flex';
+    style.flexDirection = uiListLayout.properties.FillDirection === 'Horizontal' ? 'row' : 'column';
+    const paddingOffset = uiListLayout.properties.Padding?.offset || 8;
+    style.gap = `${paddingOffset}px`;
     style.alignItems = 'center';
+  }
+
+  // Text Properties
+  let textContent = null;
+  const isTextElement = ['TextLabel', 'TextButton', 'TextBox'].includes(instance.className);
+  if (isTextElement) {
+    textContent = props.Text !== undefined ? props.Text : instance.name || instance.className;
+    style.color = props.TextColor3 || '#ffffff';
+    style.fontSize = props.TextSize ? `${props.TextSize}px` : props.TextScaled ? '16px' : '14px';
+    style.fontWeight = '600';
+    style.display = style.display || 'flex';
+    style.alignItems = style.alignItems || 'center';
     style.justifyContent = 'center';
+    
     if (props.TextXAlignment === 'Left') style.justifyContent = 'flex-start';
     if (props.TextXAlignment === 'Right') style.justifyContent = 'flex-end';
     if (props.TextYAlignment === 'Top') style.alignItems = 'flex-start';
     if (props.TextYAlignment === 'Bottom') style.alignItems = 'flex-end';
-    style.fontFamily = props.Font === 'Enum.Font.Code' ? 'monospace' : 'sans-serif';
-    if (props.TextTransparency !== undefined) style.opacity = 1 - props.TextTransparency;
-    if (props.TextWrapped) style.textAlign = 'center';
-  }
-
-  // Image
-  if (['ImageLabel', 'ImageButton'].includes(instance.type)) {
-    if (typeof props.Image === 'string') {
-      const src = props.Image.startsWith('rbxassetid://') 
-        ? `https://www.roblox.com/asset-thumbnail/image?width=420&height=420&format=png&assetId=${props.Image.replace('rbxassetid://', '')}`
-        : props.Image;
-      style.backgroundImage = `url(${src})`;
-      style.backgroundSize = '100% 100%';
+    
+    // Font mapping
+    const font = (props.Font || '').toString().toLowerCase();
+    if (font.includes('code') || font.includes('mono')) style.fontFamily = 'monospace';
+    else if (font.includes('fredoka') || font.includes('luckiest') || font.includes('cartoon')) style.fontFamily = '"Fredoka", "Comic Sans MS", cursive, sans-serif';
+    else if (font.includes('gotham') || font.includes('sans')) style.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    
+    if (props.TextStrokeColor3) {
+      style.textShadow = `0px 1px 2px ${props.TextStrokeColor3}, 0px -1px 2px ${props.TextStrokeColor3}`;
     }
   }
 
-  if (instance.type === 'ScreenGui') {
-    style.width = '100%';
-    style.height = '100%';
-  }
-  
-  if (['TextButton', 'ImageButton'].includes(instance.type)) {
-    style.pointerEvents = 'auto'; // Buttons are interactive
-  } else {
-    style.pointerEvents = 'none'; // Allow clicking through non-interactive UI elements
+  // Image Properties
+  if (['ImageLabel', 'ImageButton'].includes(instance.className)) {
+    if (typeof props.Image === 'string' && props.Image.length > 0) {
+      const rawImg = props.Image;
+      const src = rawImg.startsWith('rbxassetid://') 
+        ? `https://www.roblox.com/asset-thumbnail/image?width=420&height=420&format=png&assetId=${rawImg.replace('rbxassetid://', '')}`
+        : rawImg;
+      style.backgroundImage = `url(${src})`;
+      style.backgroundSize = 'contain';
+      style.backgroundPosition = 'center';
+      style.backgroundRepeat = 'no-repeat';
+    } else {
+      // Stylized Roblox Image fallback
+      style.backgroundColor = props.BackgroundColor3 || '#2c2d30';
+    }
   }
 
-  const InnerTag = ['TextButton', 'ImageButton'].includes(instance.type) ? 'button' : 'div';
+  const isButton = ['TextButton', 'ImageButton'].includes(instance.className);
+  if (isButton) {
+    style.pointerEvents = 'auto';
+    style.cursor = 'pointer';
+    style.userSelect = 'none';
+  } else if (instance.className === 'ScreenGui') {
+    style.pointerEvents = 'none';
+  } else {
+    style.pointerEvents = 'auto';
+  }
+
+  const [clickCount, setClickCount] = useState(0);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSelect(instance);
+    if (isButton) {
+      setClickCount(prev => prev + 1);
+    }
+  };
+
+  const InnerTag = isButton ? 'button' : 'div';
   const childGuiElements = ['Frame', 'TextLabel', 'TextButton', 'TextBox', 'ImageLabel', 'ImageButton', 'ScrollingFrame', 'ScreenGui'];
 
   return (
-    <InnerTag style={style}>
+    <InnerTag 
+      style={style}
+      onClick={handleClick}
+      className={`relative ${isButton ? 'hover:brightness-110 active:scale-95' : ''} ${isSelected ? 'ring-2 ring-blue-500 shadow-lg' : ''}`}
+    >
       {textContent}
-      {children.filter(c => childGuiElements.includes(c.type)).map(child => (
-        <RobloxGuiNode key={child.id} instance={child} instances={instances} />
+      {isButton && clickCount > 0 && (
+        <span className="absolute -top-2 -right-2 bg-emerald-500 text-black font-bold text-[9px] px-1.5 py-0.5 rounded-full animate-bounce">
+          +{clickCount}
+        </span>
+      )}
+      {children.filter(c => childGuiElements.includes(c.className)).map(child => (
+        <RobloxGuiNode 
+          key={child.id} 
+          instance={child} 
+          allInstances={allInstances}
+          onSelect={onSelect}
+          isSelected={isSelected}
+        />
       ))}
     </InnerTag>
   );
 };
 
+// --- First-Person Player Controller ---
 const PlayerController = ({ isPlayMode }: { isPlayMode: boolean }) => {
   const { camera } = useThree();
   const velocity = useRef(new THREE.Vector3());
   const direction = useRef(new THREE.Vector3());
-  const moveState = useRef({ forward: false, backward: false, left: false, right: false });
+  const moveState = useRef({ forward: false, backward: false, left: false, right: false, sprint: false });
   const controlsRef = useRef<any>(null);
   const [isLocked, setIsLocked] = useState(false);
   const canJump = useRef(false);
 
   useEffect(() => {
     if (isPlayMode) {
-      camera.position.set(0, 5, 0); // Reset position
+      camera.position.set(0, 5, 12);
       velocity.current.set(0, 0, 0);
     } else {
       if (controlsRef.current && controlsRef.current.isLocked) {
@@ -459,9 +628,13 @@ const PlayerController = ({ isPlayMode }: { isPlayMode: boolean }) => {
         case 'KeyD':
           moveState.current.right = true;
           break;
+        case 'ShiftLeft':
+        case 'ShiftRight':
+          moveState.current.sprint = true;
+          break;
         case 'Space':
           if (canJump.current) {
-            velocity.current.y = 35.0; // Jump velocity
+            velocity.current.y = 42.0;
             canJump.current = false;
           }
           break;
@@ -487,6 +660,10 @@ const PlayerController = ({ isPlayMode }: { isPlayMode: boolean }) => {
         case 'KeyD':
           moveState.current.right = false;
           break;
+        case 'ShiftLeft':
+        case 'ShiftRight':
+          moveState.current.sprint = false;
+          break;
       }
     };
 
@@ -499,26 +676,21 @@ const PlayerController = ({ isPlayMode }: { isPlayMode: boolean }) => {
     };
   }, [isPlayMode]);
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     if (!isPlayMode || !controlsRef.current || !controlsRef.current.isLocked) return;
 
-    // Cap delta to prevent huge jumps on lag
     const dt = Math.min(delta, 0.1);
+    const speed = moveState.current.sprint ? 280.0 : 180.0;
+    const friction = 14.0;
+    const gravity = 85.0;
 
-    const speed = 180.0;
-    const friction = 15.0;
-    const gravity = 90.0;
-
-    // Apply friction with clamping to prevent oscillation (shaking)
     velocity.current.x -= velocity.current.x * Math.min(friction * dt, 1);
     velocity.current.z -= velocity.current.z * Math.min(friction * dt, 1);
-
-    // Gravity
     velocity.current.y -= gravity * dt;
 
     direction.current.z = Number(moveState.current.forward) - Number(moveState.current.backward);
     direction.current.x = Number(moveState.current.right) - Number(moveState.current.left);
-    direction.current.normalize(); // this ensures consistent movements in all directions
+    direction.current.normalize();
 
     if (moveState.current.forward || moveState.current.backward) velocity.current.z -= direction.current.z * speed * dt;
     if (moveState.current.left || moveState.current.right) velocity.current.x -= direction.current.x * speed * dt;
@@ -526,10 +698,8 @@ const PlayerController = ({ isPlayMode }: { isPlayMode: boolean }) => {
     controlsRef.current.moveRight(-velocity.current.x * dt);
     controlsRef.current.moveForward(-velocity.current.z * dt);
     
-    // Apply Y velocity to camera
     camera.position.y += velocity.current.y * dt;
     
-    // Floor collision
     if (camera.position.y < 5.0) {
       velocity.current.y = 0;
       camera.position.y = 5.0;
@@ -545,108 +715,202 @@ const PlayerController = ({ isPlayMode }: { isPlayMode: boolean }) => {
         onUnlock={() => setIsLocked(false)} 
       />
       {!isLocked && (
-        <Html fullscreen style={{ pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center' }}>
-           <div className="bg-black/80 text-white px-6 py-4 rounded-2xl border border-white/10 backdrop-blur-md shadow-2xl flex flex-col items-center gap-2 animate-in fade-in zoom-in duration-300">
-             <div className="text-lg font-bold">Click anywhere to play</div>
-             <div className="text-neutral-400 text-sm flex gap-3">
-               <span><kbd className="bg-white/10 px-1.5 py-0.5 rounded text-neutral-300">W</kbd> <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-neutral-300">A</kbd> <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-neutral-300">S</kbd> <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-neutral-300">D</kbd> to move</span>
-               <span><kbd className="bg-white/10 px-1.5 py-0.5 rounded text-neutral-300">SPACE</kbd> to jump</span>
-               <span><kbd className="bg-white/10 px-1.5 py-0.5 rounded text-neutral-300">ESC</kbd> to unlock</span>
-             </div>
-           </div>
+        <Html fullscreen style={{ pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="bg-black/85 text-white px-6 py-5 rounded-2xl border border-white/15 backdrop-blur-xl shadow-2xl flex flex-col items-center gap-3 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center gap-2 text-base font-bold text-white">
+              <Zap size={18} className="text-amber-400" />
+              <span>Click anywhere to start playtest</span>
+            </div>
+            <div className="text-neutral-400 text-xs flex items-center gap-3">
+              <span><kbd className="bg-white/10 px-1.5 py-0.5 rounded text-neutral-200">W A S D</kbd> to move</span>
+              <span><kbd className="bg-white/10 px-1.5 py-0.5 rounded text-neutral-200">SHIFT</kbd> sprint</span>
+              <span><kbd className="bg-white/10 px-1.5 py-0.5 rounded text-neutral-200">SPACE</kbd> jump</span>
+              <span><kbd className="bg-white/10 px-1.5 py-0.5 rounded text-neutral-200">ESC</kbd> unlock</span>
+            </div>
+          </div>
         </Html>
       )}
     </>
   ) : null;
 };
 
-export function RobloxEnginePreview({ code, isPlayMode = false }: { code: string, isPlayMode?: boolean }) {
-  const [instances, setInstances] = useState<MockInstance[]>([]);
-  const [isMobile, setIsMobile] = useState(false);
+// --- Main Engine Preview Component ---
+interface RobloxEnginePreviewProps {
+  code?: string;
+  files?: { path: string; type: string; content: string }[];
+  isPlayMode?: boolean;
+  devicePreset?: 'pc' | 'mobile' | 'tablet';
+}
 
-  useEffect(() => {
-    // Basic mobile check
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768 || 'ontouchstart' in window);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+export function RobloxEnginePreview({ code = '', files, isPlayMode = false, devicePreset = 'pc' }: RobloxEnginePreviewProps) {
+  const [selectedFileIdx, setSelectedFileIdx] = useState<number>(-1); // -1 = All Files Combined
+  const [selectedInstance, setSelectedInstance] = useState<RobloxInstance | null>(null);
+  const [viewMode, setViewMode] = useState<'both' | '3d' | 'gui'>('both');
 
-  useEffect(() => {
-    setInstances(parseLuauToInstances(code));
-  }, [code]);
+  // Compute active Luau payload
+  const activeLuau = useMemo(() => {
+    if (files && files.length > 0) {
+      if (selectedFileIdx >= 0 && files[selectedFileIdx]) {
+        return files[selectedFileIdx].content;
+      }
+      return aggregateProjectLuau(files);
+    }
+    return code;
+  }, [code, files, selectedFileIdx]);
 
-  const parts = instances.filter(i => i.type === 'Part');
-  
-  // Find GUI roots (ScreenGuis or any UI element with no valid parent)
-  const guiElements = ['ScreenGui', 'Frame', 'TextLabel', 'TextButton', 'TextBox', 'ImageLabel', 'ImageButton', 'ScrollingFrame'];
-  const rootGuiInstances = instances.filter(i => 
-    guiElements.includes(i.type) && (!i.parentVar || !instances.find(p => p.varName === i.parentVar))
-  );
+  // Parse instances from active Luau
+  const instances = useMemo(() => {
+    return parseLuauInstances(activeLuau);
+  }, [activeLuau]);
+
+  // Filter 3D workspace parts and 2D UI roots
+  const parts3D = useMemo(() => {
+    const partClassNames = ['Part', 'WedgePart', 'CornerWedgePart', 'TrussPart', 'SpawnLocation', 'MeshPart', 'UnionOperation'];
+    return instances.filter(i => partClassNames.includes(i.className));
+  }, [instances]);
+
+  const guiRoots = useMemo(() => {
+    const guiClassNames = ['ScreenGui', 'Frame', 'TextLabel', 'TextButton', 'TextBox', 'ImageLabel', 'ImageButton', 'ScrollingFrame'];
+    return instances.filter(i => 
+      guiClassNames.includes(i.className) && (!i.parentVar || i.parentVar === 'StarterGui' || !instances.find(p => p.varName === i.parentVar))
+    );
+  }, [instances]);
+
+  // Viewport resolution preset
+  const viewportStyles = useMemo(() => {
+    if (devicePreset === 'mobile') {
+      return { width: '390px', height: '844px', borderRadius: '44px', border: '12px solid #1c1c1e', overflow: 'hidden' };
+    }
+    if (devicePreset === 'tablet') {
+      return { width: '768px', height: '1024px', borderRadius: '28px', border: '10px solid #1c1c1e', overflow: 'hidden' };
+    }
+    return { width: '100%', height: '100%' };
+  }, [devicePreset]);
 
   return (
-    <div className="w-full h-full relative overflow-hidden bg-black">
-      {/* 3D Canvas */}
-      <div className="absolute inset-0 z-10 pointer-events-auto">
-        <Canvas shadows={{ type: THREE.PCFShadowMap }} camera={{ position: [15, 15, 15], fov: 50, far: 50000 }}>
-          <RealisticSky3D />
-          <fog attach="fog" args={['#ede8dc', 1000, 15000]} />
-          
-          <ambientLight intensity={0.5} />
-          <directionalLight 
-            castShadow 
-            position={[10, 20, 10]} 
-            intensity={1.5} 
-            shadow-mapSize={[1024, 1024]}
-          />
-          
-          <Baseplate />
+    <div className="w-full h-full relative overflow-hidden bg-[#0a0a0c] flex flex-col select-none">
+      {/* Main Canvas Viewport Container */}
+      <div className="flex-1 flex items-center justify-center relative overflow-hidden bg-black p-0">
+        <div style={viewportStyles} className="relative transition-all duration-300 shadow-2xl">
+          {/* 3D Three.js Canvas */}
+          {(viewMode === 'both' || viewMode === '3d') && (
+            <div className="absolute inset-0 z-10">
+              <Canvas 
+                shadows={{ type: THREE.PCFShadowMap }} 
+                camera={{ position: [16, 16, 18], fov: 50, far: 50000 }}
+                gl={{ antialias: true, alpha: false }}
+              >
+                <RealisticSky3D />
+                <fog attach="fog" args={['#ede8dc', 1200, 16000]} />
+                
+                <ambientLight intensity={0.65} />
+                <directionalLight 
+                  castShadow 
+                  position={[25, 45, 20]} 
+                  intensity={1.8} 
+                  shadow-mapSize={[1024, 1024]}
+                  shadow-bias={-0.0001}
+                />
+                
+                <Baseplate />
 
-          {parts.map(part => (
-            <PartMesh key={part.id} instance={part} />
-          ))}
-          
-          {isPlayMode ? (
-            <PlayerController isPlayMode={isPlayMode} />
-          ) : (
-            <OrbitControls 
-              makeDefault 
-              minDistance={2} 
-              maxDistance={10000}
-              enableDamping={true}
-              dampingFactor={0.05}
-              enablePan={true}
-            />
+                {parts3D.map(part => (
+                  <PartMesh 
+                    key={part.id} 
+                    instance={part} 
+                    allInstances={instances}
+                    onSelect={setSelectedInstance}
+                    isSelected={selectedInstance?.id === part.id}
+                  />
+                ))}
+                
+                {isPlayMode ? (
+                  <PlayerController isPlayMode={isPlayMode} />
+                ) : (
+                  <OrbitControls 
+                    makeDefault 
+                    minDistance={2} 
+                    maxDistance={10000}
+                    enableDamping={true}
+                    dampingFactor={0.05}
+                    enablePan={true}
+                  />
+                )}
+              </Canvas>
+            </div>
           )}
-        </Canvas>
+
+          {/* 2D GUI Overlay */}
+          {(viewMode === 'both' || viewMode === 'gui') && (
+            <div className={`absolute inset-0 z-20 ${viewMode === 'gui' ? 'bg-[#0f0f12]' : 'pointer-events-none'}`}>
+              {guiRoots.length > 0 && (
+                <div className="absolute top-3 right-3 bg-black/80 border border-neutral-800 text-neutral-300 text-[11px] font-medium px-3 py-1.5 rounded-full backdrop-blur-md flex items-center gap-1.5 pointer-events-auto shadow-lg">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Press <strong className="text-white">Play</strong> (F5) in Studio to test GUI</span>
+                </div>
+              )}
+              {guiRoots.map(gui => (
+                <RobloxGuiNode 
+                  key={gui.id} 
+                  instance={gui} 
+                  allInstances={instances}
+                  onSelect={setSelectedInstance}
+                  isSelected={selectedInstance?.id === gui.id}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Empty State Helper when no instances parsed */}
+          {instances.length === 0 && (
+            <div className="absolute inset-0 z-30 flex items-center justify-center p-6 text-center pointer-events-none">
+              <div className="bg-[#141416]/90 border border-white/10 backdrop-blur-md rounded-2xl p-6 max-w-sm text-neutral-400 text-xs space-y-2">
+                <Sparkles size={20} className="mx-auto text-blue-400" />
+                <h4 className="text-white font-medium text-sm">Waiting for Roblox Instances</h4>
+                <p>Prompt the AI to create parts, GUIs, maps, or leaderboards to watch them render live in this viewport.</p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Mobile Play Mode Overlay */}
-      {isMobile && isPlayMode && (
-        <div className="absolute inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-6 text-center animate-in fade-in">
-          <div className="bg-[#111111] border border-white/10 rounded-2xl p-8 max-w-sm w-full shadow-2xl relative">
-            <h3 className="text-xl font-bold text-white mb-4">Mobile Support Coming Soon</h3>
-            <p className="text-neutral-400 text-sm mb-6 leading-relaxed">
-              Play mode currently requires a keyboard for movement. Please use a computer to access this platform and experience first-person mode.
-            </p>
+      {/* Collapsible Inspector Drawer */}
+      {selectedInstance && (
+        <div className="h-28 border-t border-white/10 bg-[#121214] px-4 py-2.5 flex items-center justify-between z-30 text-xs shrink-0">
+          <div className="space-y-1 overflow-hidden pr-4">
+            <div className="flex items-center gap-2">
+              <span className="bg-blue-500/20 text-blue-400 font-mono text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase">
+                {selectedInstance.className}
+              </span>
+              <strong className="text-white text-sm font-semibold truncate">{selectedInstance.name}</strong>
+            </div>
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-x-4 gap-y-1 text-neutral-400 text-[11px]">
+              {selectedInstance.properties.Position && (
+                <div><span className="text-neutral-500">Position:</span> {JSON.stringify(selectedInstance.properties.Position)}</div>
+              )}
+              {selectedInstance.properties.Size && (
+                <div><span className="text-neutral-500">Size:</span> {JSON.stringify(selectedInstance.properties.Size)}</div>
+              )}
+              {selectedInstance.properties.Color && (
+                <div className="flex items-center gap-1">
+                  <span className="text-neutral-500">Color:</span>
+                  <span className="w-3 h-3 rounded-full inline-block border border-white/20" style={{ backgroundColor: selectedInstance.properties.Color }} />
+                  <span>{selectedInstance.properties.Color}</span>
+                </div>
+              )}
+              {selectedInstance.properties.Material && (
+                <div><span className="text-neutral-500">Material:</span> {selectedInstance.properties.Material}</div>
+              )}
+            </div>
           </div>
+          <button 
+            onClick={() => setSelectedInstance(null)}
+            className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition-colors"
+          >
+            Deselect
+          </button>
         </div>
       )}
-
-      {/* 2D GUI Overlay */}
-      <div className="absolute inset-0 z-20 pointer-events-none">
-        {rootGuiInstances.length > 0 && (
-          <div className="absolute top-3 right-3 bg-black/80 border border-neutral-800 text-neutral-300 text-[11px] font-medium px-3 py-1.5 rounded-full backdrop-blur-md flex items-center gap-1.5 pointer-events-auto shadow-lg">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Press <strong className="text-white">Play</strong> (F5) in Studio to test GUI</span>
-          </div>
-        )}
-        {rootGuiInstances.map(gui => (
-          <RobloxGuiNode key={gui.id} instance={gui} instances={instances} />
-        ))}
-      </div>
     </div>
   );
 }

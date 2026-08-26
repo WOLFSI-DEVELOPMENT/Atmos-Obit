@@ -43,6 +43,7 @@ import { PricingPage } from './components/PricingPage';
 import { AuthPage } from './components/AuthPage';
 import { SettingsModal } from './components/SettingsModal';
 import { ProductIntroModal } from './components/ProductIntroModal';
+import { PluginNoticeModal } from './components/PluginNoticeModal';
 import { ArtifactsPanel } from './components/ArtifactsPanel';
 import { HomeLayout } from './components/HomeLayout';
 
@@ -195,6 +196,10 @@ export default function App() {
   const [connectError, setConnectError] = useState<string | null>(null);
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<'account' | 'personalize' | 'behavior' | 'ai' | 'permissions' | 'experiments' | 'whats-coming'>('account');
+  const [showPluginNotice, setShowPluginNotice] = useState<boolean>(() => {
+    return localStorage.getItem('atmos_plugin_notice_dismissed_v1') !== 'true';
+  });
 
   const [selectedModel, setSelectedModel] = useState<string>(() => {
     return localStorage.getItem('vibecoder_selected_model') || 'gemini-3.5-flash';
@@ -1062,7 +1067,11 @@ export default function App() {
 
         <SettingsModal
           isOpen={isSettingsModalOpen}
-          onClose={() => setIsSettingsModalOpen(false)}
+          initialTab={settingsInitialTab}
+          onClose={() => {
+            setIsSettingsModalOpen(false);
+            setSettingsInitialTab('account');
+          }}
           user={session?.user}
           betaHomeLayout={betaHomeLayout}
           onBetaHomeLayoutChange={(val) => {
@@ -1087,6 +1096,19 @@ export default function App() {
           }}
           selectedModel={selectedModel}
           onModelChange={setSelectedModel}
+        />
+
+        {/* One-time Roblox Plugin Status Notice Popup */}
+        <PluginNoticeModal
+          isOpen={showPluginNotice}
+          onClose={() => setShowPluginNotice(false)}
+          onOpenExperiments={() => {
+            setSettingsInitialTab('experiments');
+            setIsSettingsModalOpen(true);
+          }}
+          onEnablePreview={() => {
+            setArtifactsEnabled(true);
+          }}
         />
 
         {showIntro && (

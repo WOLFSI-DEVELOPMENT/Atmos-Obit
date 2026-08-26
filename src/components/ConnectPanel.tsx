@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { QrCode, MonitorPlay, KeyRound, CheckCircle2, ArrowUpRight } from 'lucide-react';
+import { QrCode, MonitorPlay, KeyRound, CheckCircle2, ArrowUpRight, ShieldAlert } from 'lucide-react';
 
 export default function ConnectPanel({ onConnect }: { onConnect: (pin: string) => void }) {
   const [code, setCode] = useState('');
@@ -66,17 +66,25 @@ export default function ConnectPanel({ onConnect }: { onConnect: (pin: string) =
         )}
       </div>
 
-      <div className="flex-1 p-8 flex flex-col items-center justify-center gap-10">
-        <div className="text-center space-y-3">
-          <h3 className="text-2xl font-medium text-white tracking-wide">Connect Roblox Studio</h3>
-          <p className="text-[#888] text-sm max-w-sm leading-relaxed">
+      <div className="flex-1 p-6 sm:p-8 flex flex-col items-center justify-center gap-6 overflow-y-auto">
+        {/* Notice alert */}
+        <div className="w-full max-w-sm bg-[#161616] border border-[#2a2a2a] rounded-xl p-3.5 flex items-start gap-2.5 text-left">
+          <ShieldAlert size={16} className="text-amber-400 shrink-0 mt-0.5" />
+          <div className="text-[12px] text-[#a0a0a0] leading-snug">
+            <span className="text-neutral-200 font-medium">Plugin Appeal in Progress:</span> Roblox temporarily flagged the plugin under "Misusing Roblox Systems." We are appealing and anticipate full reinstatement by <span className="text-white font-medium">Aug 25–26</span>. In the meantime, use <span className="text-neutral-200">Settings → Experiments</span> for browser preview.
+          </div>
+        </div>
+
+        <div className="text-center space-y-2">
+          <h3 className="text-xl font-medium text-white tracking-wide">Connect Roblox Studio</h3>
+          <p className="text-[#888] text-xs max-w-sm leading-relaxed">
             Scan this QR code with the VibeCoder plugin in Roblox Studio.
           </p>
         </div>
 
         {/* QR Code Mockup */}
-        <div className="p-6 bg-white border-4 border-[#333] rounded-none flex items-center justify-center shadow-none">
-           <QrCode className="w-40 h-40 text-black" />
+        <div className="p-5 bg-white border-4 border-[#333] rounded-none flex items-center justify-center shadow-none">
+           <QrCode className="w-36 h-36 text-black" />
         </div>
       </div>
 
