@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Cloud, Search, Plus, Mic, MicOff, Folder, Code, Terminal, Upload, X, RefreshCw, Bug, Check, ChevronDown, Monitor, GitBranch, ArrowUp, Zap, Sparkles, BrainCircuit, Gamepad2, Trophy, Coins, Sword, Copy, Download } from 'lucide-react';
+import { Cloud, Search, Plus, Mic, MicOff, Folder, Code, Terminal, Upload, X, RefreshCw, Bug, Check, ChevronDown, Monitor, GitBranch, ArrowUp, Zap, Sparkles, BrainCircuit, Gamepad2, Trophy, Coins, Sword, Copy, Download, ArrowUpRight } from 'lucide-react';
 import { Project, GEMINI_MODELS, OPENAI_MODELS, ANTHROPIC_MODELS } from '../types';
 
 interface HomeLayoutProps {
   projects: Project[];
   activeProjectId: string | null;
   onSelectProject: (id: string) => void;
-  onCreateProject: (name: string, file?: File | null) => Promise<string> | string;
+  onCreateProject: (name: string, type: 'roblox' | 'atmos', file?: File | null) => Promise<string> | string;
   onSendMessage: (prompt: string, projectId: string | null) => void;
   selectedModel: string;
   onModelChange: (model: string) => void;
@@ -45,6 +45,7 @@ export function HomeLayout({
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [newProjName, setNewProjName] = useState('');
+  const [newProjType, setNewProjType] = useState<'roblox' | 'atmos'>('roblox');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -76,12 +77,13 @@ export function HomeLayout({
   const selectedProject = projects.find(p => p.id === selectedHomeProjectId);
 
   const handleCreate = async () => {
-    const newId = await onCreateProject(newProjName, selectedFile);
+    const newId = await onCreateProject(newProjName, newProjType, selectedFile);
     if (newId) {
       setSelectedHomeProjectId(newId);
     }
     setIsCreateModalOpen(false);
     setNewProjName('');
+    setNewProjType('roblox');
     setSelectedFile(null);
   };
 
@@ -204,13 +206,15 @@ end
           </button>
 
           <div className="relative" ref={connectDropdownRef}>
-            <button
-              onClick={() => setIsConnectDropdownOpen(!isConnectDropdownOpen)}
-              className="flex items-center gap-1.5 text-[13px] font-medium text-white/80 hover:text-white transition-colors bg-white/5 hover:bg-white/10 px-3 py-1 rounded-lg"
-            >
-              <Cloud size={14} className="text-white/60" />
-              Connect
-            </button>
+            {(!selectedProject || selectedProject.projectType !== 'atmos') && (
+              <button
+                onClick={() => setIsConnectDropdownOpen(!isConnectDropdownOpen)}
+                className="flex items-center gap-1.5 text-[13px] font-medium text-white/80 hover:text-white transition-colors bg-white/5 hover:bg-white/10 px-3 py-1 rounded-lg"
+              >
+                <Cloud size={14} className="text-white/60" />
+                Connect
+              </button>
+            )}
           </div>
         </div>
 
@@ -391,15 +395,24 @@ end
                 <p className="text-[10px] text-neutral-400 mt-2.5 leading-normal">
                   Enter this PIN in the VibeCoder Roblox Studio plugin to sync.
                 </p>
-                <div className="mt-3 pt-3 border-t border-white/5">
+                <div className="mt-3 pt-3 border-t border-white/5 space-y-2">
+                  <a
+                    href="https://create.roblox.com/store/asset/115974186525830"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setIsConnectDropdownOpen(false)}
+                    className="w-full py-2 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <ArrowUpRight size={14} /> Install Plugin
+                  </a>
                   <button
                     onClick={() => {
                       setIsConnectDropdownOpen(false);
                       downloadPluginLuaScript(selectedProject.pin);
                     }}
-                    className="w-full py-2 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
+                    className="w-full py-1.5 bg-transparent hover:bg-white/5 text-neutral-400 hover:text-neutral-200 text-[11px] font-medium rounded-xl transition-colors flex items-center justify-center gap-1.5"
                   >
-                    <Download size={13} /> Install Plugin
+                    <Download size={12} /> Download .lua Script
                   </button>
                 </div>
               </>
@@ -480,6 +493,26 @@ end
               </button>
             </div>
             <div className="p-6 space-y-6">
+              <div className="space-y-3">
+                <span className="text-[14px] font-medium text-white">Project Type</span>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setNewProjType('roblox')}
+                    className={`flex-1 py-3 px-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-colors ${newProjType === 'roblox' ? 'bg-[#2a2a2a] border-[#4a4a4a] text-white' : 'bg-[#111] border-white/10 text-white/50 hover:bg-[#161616]'}`}
+                  >
+                    <Gamepad2 size={24} />
+                    <span className="text-sm font-medium">Roblox Game</span>
+                  </button>
+                  <button
+                    onClick={() => setNewProjType('atmos')}
+                    className={`flex-1 py-3 px-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-colors ${newProjType === 'atmos' ? 'bg-[#2a2a2a] border-[#4a4a4a] text-white' : 'bg-[#111] border-white/10 text-white/50 hover:bg-[#161616]'}`}
+                  >
+                    <Sparkles size={24} />
+                    <span className="text-sm font-medium">Atmos Play Game</span>
+                  </button>
+                </div>
+              </div>
+
               <div className="flex items-center gap-3 bg-[#111] border border-white/10 rounded-xl px-4 py-3">
                 <Folder size={18} className="text-[#888]" />
                 <input 
@@ -492,24 +525,26 @@ end
                 />
               </div>
 
-              <div className="space-y-3">
-                <span className="text-[14px] font-medium text-white">Source folders</span>
-                <div 
-                  className="w-full border border-dashed border-white/20 rounded-xl bg-[#111] hover:bg-[#161616] hover:border-white/40 transition-colors cursor-pointer flex flex-col items-center justify-center py-10 gap-2"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload size={24} className="text-[#888]" />
-                  <span className="text-[14px] font-medium text-white/70">Add folders AI can read and edit</span>
-                  {selectedFile && <span className="text-[12px] text-[#0a84ff] mt-2 font-medium">{selectedFile.name}</span>}
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} 
-                    className="hidden" 
-                    accept=".zip"
-                  />
+              {newProjType === 'roblox' && (
+                <div className="space-y-3">
+                  <span className="text-[14px] font-medium text-white">Source folders</span>
+                  <div 
+                    className="w-full border border-dashed border-white/20 rounded-xl bg-[#111] hover:bg-[#161616] hover:border-white/40 transition-colors cursor-pointer flex flex-col items-center justify-center py-10 gap-2"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload size={24} className="text-[#888]" />
+                    <span className="text-[14px] font-medium text-white/70">Add folders AI can read and edit</span>
+                    {selectedFile && <span className="text-[12px] text-[#0a84ff] mt-2 font-medium">{selectedFile.name}</span>}
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} 
+                      className="hidden" 
+                      accept=".zip"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
             <div className="px-6 py-4 border-t border-white/5 flex items-center justify-end gap-3 bg-[#111]">
               <button 
@@ -530,35 +565,26 @@ end
         </div>
       )}
 
-      {/* Please Connect Modal */}
+      {/* Please Select Project Modal */}
       {isPleaseConnectModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4 animate-in fade-in duration-200">
           <div className="bg-[#1f1f1f] border border-[#2a2a2a] rounded-2xl p-6 w-full max-w-md shadow-2xl relative text-center">
             <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 text-white">
-              <Cloud size={24} />
+              <Folder size={24} />
             </div>
-            <h3 className="text-lg font-bold text-white mb-2">Please Connect to Roblox Studio</h3>
+            <h3 className="text-lg font-bold text-white mb-2">Please Choose a Project</h3>
             <p className="text-sm text-neutral-400 mb-6">
-              You must choose a project and connect your workspace before you can start prompting AI-generated scripts.
+              You must choose or create a project before you can start prompting AI-generated scripts.
             </p>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center gap-3">
               <button
                 onClick={() => {
                   setIsPleaseConnectModalOpen(false);
                   setIsDropdownOpen(true);
                 }}
-                className="flex-1 py-2.5 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold rounded-xl transition-colors"
+                className="w-full py-2.5 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold rounded-xl transition-colors"
               >
                 Choose Project
-              </button>
-              <button
-                onClick={() => {
-                  setIsPleaseConnectModalOpen(false);
-                  setIsConnectDropdownOpen(true);
-                }}
-                className="flex-1 py-2.5 bg-white text-black hover:bg-neutral-200 text-xs font-bold rounded-xl transition-colors"
-              >
-                Connect Now
               </button>
             </div>
             <button

@@ -10,6 +10,7 @@ export interface Message {
 export interface Project {
   id: string; // matches the pin or a unique id
   name: string;
+  projectType?: 'roblox' | 'atmos';
   pin: string;
   createdAt: number;
   status: 'waiting' | 'connected';

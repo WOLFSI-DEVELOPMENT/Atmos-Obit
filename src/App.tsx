@@ -402,7 +402,7 @@ export default function App() {
     }
   };
 
-  const handleCreateProject = async (e?: React.FormEvent, initialPrompt?: string, file?: File | null, directName?: string): Promise<string> => {
+  const handleCreateProject = async (e?: React.FormEvent, initialPrompt?: string, file?: File | null, directName?: string, type: 'roblox' | 'atmos' = 'roblox'): Promise<string> => {
     if (e) e.preventDefault();
     setIsGenerating(true);
     setConnectError(null);
@@ -418,10 +418,11 @@ export default function App() {
         id: data.pin, // use PIN as project ID for simpler mapping
         name,
         pin: data.pin,
+        projectType: type,
         createdAt: Date.now(),
-        status: 'waiting',
+        status: type === 'atmos' ? 'connected' : 'waiting',
         messages: initialPrompt ? [] : [
-          { role: 'model', content: `Welcome to **${name}**! Your session PIN is \`${data.pin}\`.\n\nTo connect this workspace directly to Roblox Studio:\n1. Open your game in Roblox Studio.\n2. Open the **VibeCoder plugin**.\n3. Enter the PIN \`${data.pin}\` and click Connect.\n\nOnce synced, any scripts generated here will automatically load in Roblox Studio in real-time!` }
+          { role: 'model', content: type === 'atmos' ? `Welcome to **${name}**! This is an Atmos Play Game project using .atmos code.` : `Welcome to **${name}**! Your session PIN is \`${data.pin}\`.\n\nTo connect this workspace directly to Roblox Studio:\n1. Open your game in Roblox Studio.\n2. Open the **VibeCoder plugin**.\n3. Enter the PIN \`${data.pin}\` and click Connect.\n\nOnce synced, any scripts generated here will automatically load in Roblox Studio in real-time!` }
         ]
       };
 
@@ -432,7 +433,9 @@ export default function App() {
       }
       setGeneratedPin(data.pin);
       setNewProjectName('');
-      startPolling(data.pin, newProj.id);
+      if (type === 'roblox') {
+        startPolling(data.pin, newProj.id);
+      }
       return newProj.id;
     } catch (err: any) {
       console.error(err);
@@ -762,8 +765,8 @@ export default function App() {
               projects={projects}
               activeProjectId={activeProjectId}
               onSelectProject={handleSelectProject}
-              onCreateProject={async (name, file) => {
-                return await handleCreateProject(undefined, undefined, file, name);
+              onCreateProject={async (name, type, file) => {
+                return await handleCreateProject(undefined, undefined, file, name, type);
               }}
               onSendMessage={handleHomeSendMessage}
               selectedModel={selectedModel}

@@ -319,7 +319,7 @@ app.post('/api/plugin/state', async (req, res) => {
 
 // 5. Web App: Send Chat to AI and Queue Code
 app.post('/api/chat', async (req, res) => {
-  const { message, pin, image, model, apiKey, baseUrl, thinkingConfig, allowToolbox, allowIconGen, assetPreference, responseTone, guiStyle, orchestratorEnabled, guiCreationEnabled } = req.body;
+  const { message, pin, projectType, image, model, apiKey, baseUrl, thinkingConfig, allowToolbox, allowIconGen, assetPreference, responseTone, guiStyle, orchestratorEnabled, guiCreationEnabled } = req.body;
   
   try {
     const session = pin ? await getSession(pin) : null;
@@ -414,7 +414,31 @@ CRITICAL PREFERENCE: You have access to "GUI Creation v1". You are encouraged to
     }
 
 
-    const systemInstruction = `You are VibeCoder, an expert Roblox Luau AI coding assistant.${gameStateContext}
+    let systemInstruction = '';
+
+    if (projectType === 'atmos') {
+      systemInstruction = `You are Atmos AI, an expert game developer.
+You write custom, modular .atmos code (a language similar to Lua) to build full games with rich mechanics and GUI.
+These games run directly in the web preview artifacts.
+
+Capabilities:
+1. Create or Overwrite a Script: Output a JSON object with "type" set to "Script" (server logic), "LocalScript" (client logic), or "ModuleScript" (shared code), along with "path" and "content".
+2. Edit an existing Script: Output a JSON object with "type" set to "Edit", the "path", the exact "find" string you want to replace, and the "replace" string.
+
+Format:
+{
+"explanation": "Brief explanation of the .atmos code structure and mechanics",
+"edits": [
+  { "type": "Script", "path": "Server.Main.atmos", "content": "-- .atmos server code..." },
+  { "type": "LocalScript", "path": "Client.UI.atmos", "content": "-- .atmos client UI code..." },
+  { "type": "ModuleScript", "path": "Shared.Config.atmos", "content": "-- .atmos shared config..." },
+  { "type": "Edit", "path": "Server.Main.atmos", "find": "local speed = 10", "replace": "local speed = 20" }
+]
+}
+DO NOT use markdown code blocks for the code. Only output the JSON.
+`;
+    } else {
+      systemInstruction = `You are VibeCoder, an expert Roblox Luau AI coding assistant.${gameStateContext}
 You write clean, modular, production-ready Luau scripts that synchronize directly to Roblox Studio via live code sync.${assetInstruction}${behaviorInstructions}${guiInstruction}
 
 Capabilities:
@@ -438,6 +462,7 @@ DO NOT use markdown code blocks for the code. Only output the JSON.
 CRITICAL GUI ADVICE INSTRUCTION: Whenever you create, modify, or generate any GUI / UI (such as ScreenGui, StarterGui, Frames, TextButtons, TextLabels, ImageLabels, ImageButtons, TextBoxes, ScrollingFrames, HUDs, menus, inventories, shop UI, dialogs, health bars, or UI animation scripts), you MUST ALWAYS explicitly advise the user in your explanation that they must press the Play button (or press F5 / Play Here) in Roblox Studio to see and test the game GUI.
 
 CRITICAL: If the user request is purely conversational (e.g. "hello", "who are you"), provide a friendly response in "explanation" and leave "edits" empty [].`;
+    }
 
     
     let reply = '';

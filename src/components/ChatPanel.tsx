@@ -341,6 +341,7 @@ export default function ChatPanel({
         body: JSON.stringify({ 
           message: textToSend, 
           pin: project.pin, 
+          projectType: project.projectType,
           image: selectedImage,
           model: selectedModel,
           apiKey,
@@ -639,18 +640,21 @@ end)
       <div className="absolute top-0 left-0 right-0 py-2.5 pr-4 pl-8 flex items-center justify-between z-20 pointer-events-none">
         <div className="flex items-center gap-2 pointer-events-auto relative" ref={pinDropdownRef}>
           <h2 className="text-[17px] font-medium tracking-wide text-white">{project.name}</h2>
-          <button 
-            onClick={() => setIsPinDropdownOpen(!isPinDropdownOpen)}
-            className={`p-1 transition-colors rounded-full ${
-              isPinDropdownOpen 
-                ? 'bg-white text-black' 
-                : 'text-neutral-500 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <ChevronDown size={16} strokeWidth={2.5} />
-          </button>
+          
+          {project.projectType !== 'atmos' && (
+            <button 
+              onClick={() => setIsPinDropdownOpen(!isPinDropdownOpen)}
+              className={`p-1 transition-colors rounded-full ${
+                isPinDropdownOpen 
+                  ? 'bg-white text-black' 
+                  : 'text-neutral-500 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <ChevronDown size={16} strokeWidth={2.5} />
+            </button>
+          )}
 
-          {isPinDropdownOpen && (
+          {isPinDropdownOpen && project.projectType !== 'atmos' && (
             <div className="absolute top-full left-0 mt-2 w-72 bg-[#2a2a2a]/95 backdrop-blur-xl rounded-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150 shadow-2xl border border-white/5">
               <div className="text-[10px] text-neutral-400 uppercase tracking-widest font-bold mb-2 flex items-center justify-between">
                 <span>Roblox PIN</span>
@@ -708,14 +712,16 @@ end)
         <div className="flex items-center gap-2 relative pointer-events-auto">
 
           {/* Sync Status Badge */}
-          {project.status === 'connected' ? (
-            <span className="text-[10px] bg-neutral-900 text-white font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
-              Connected
-            </span>
-          ) : (
-            <span className="text-[10px] bg-neutral-900 text-neutral-400 font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
-              Offline
-            </span>
+          {project.projectType !== 'atmos' && (
+            project.status === 'connected' ? (
+              <span className="text-[10px] bg-neutral-900 text-white font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+                Connected
+              </span>
+            ) : (
+              <span className="text-[10px] bg-neutral-900 text-neutral-400 font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+                Offline
+              </span>
+            )
           )}
 
           {/* Artifacts Toggle Button */}
