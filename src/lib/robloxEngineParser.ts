@@ -359,6 +359,39 @@ export const parseLuauInstances = (code: string): RobloxInstance[] => {
     }
   }
 
+  // Fallback: If no 3D parts were parsed from the code, inject a rich default Roblox game environment
+  // so the preview is never empty and matches Roblox Studio experience.
+  const has3DParts = instanceList.some(i => ['Part', 'WedgePart', 'SpawnLocation', 'MeshPart', 'UnionOperation'].includes(i.className));
+  if (!has3DParts) {
+    const defaultParts = [
+      { name: 'SpawnLocation', className: 'SpawnLocation', pos: [0, 0.5, 0], size: [6, 1, 6], color: '#ef4444' },
+      { name: 'Platform1', className: 'Part', pos: [0, 0.5, -12], size: [10, 1, 10], color: '#3b82f6' },
+      { name: 'Platform2', className: 'Part', pos: [12, 2.5, -24], size: [8, 1, 8], color: '#10b981' },
+      { name: 'Platform3', className: 'Part', pos: [-12, 4.5, -36], size: [8, 1, 8], color: '#f59e0b' },
+      { name: 'WallLeft', className: 'Part', pos: [-16, 3, -18], size: [2, 6, 24], color: '#6366f1' },
+      { name: 'WallRight', className: 'Part', pos: [16, 3, -18], size: [2, 6, 24], color: '#6366f1' },
+    ];
+
+    for (const dp of defaultParts) {
+      const id = `${dp.name}_${Math.random().toString(36).substring(2, 9)}`;
+      const newInst: RobloxInstance = {
+        id,
+        varName: dp.name,
+        className: dp.className,
+        name: dp.name,
+        properties: {
+          Position: dp.pos,
+          Size: dp.size,
+          Color: dp.color,
+          Transparency: 0,
+        },
+        parentVar: 'workspace',
+        children: [],
+      };
+      instanceList.push(newInst);
+    }
+  }
+
   return instanceList;
 };
 
